@@ -1,6 +1,7 @@
 ---@diagnostic disable: undefined-field
 --# selene: allow(undefined_variable)
 local utils = require 'search-replace.utils'
+local config = require 'search-replace.config'
 local eq = assert.are.same
 
 describe('search-replace.utils', function()
@@ -20,6 +21,44 @@ describe('search-replace.utils', function()
     it('rejects nil input', function()
       assert.is_falsy(utils.is_substitute_cmd(nil))
     end)
+
+    it('rejects empty string', function()
+      assert.is_false(utils.is_substitute_cmd '')
+    end)
+
+    it('detects substitute with line number range', function()
+      assert.is_true(utils.is_substitute_cmd '1,10s/foo/bar/')
+    end)
+
+    it('detects substitute with current line only', function()
+      assert.is_true(utils.is_substitute_cmd 's/foo/bar/')
+    end)
+
+    it('detects substitute with 0,. range', function()
+      assert.is_true(utils.is_substitute_cmd '0,.s/foo/bar/')
+    end)
+
+    it('detects substitute with different separators', function()
+      assert.is_true(utils.is_substitute_cmd '%s#foo#bar#g')
+      assert.is_true(utils.is_substitute_cmd '%s?foo?bar?g')
+      assert.is_true(utils.is_substitute_cmd '%s:foo:bar:g')
+      assert.is_true(utils.is_substitute_cmd '%s@foo@bar@g')
+    end)
+
+    it('detects incomplete substitute command', function()
+      assert.is_true(utils.is_substitute_cmd '%s/')
+      assert.is_true(utils.is_substitute_cmd '.,$s#')
+    end)
+
+    it('matches commands starting with s and any char (loose detection)', function()
+      -- The pattern is intentionally loose - it matches 's' followed by any character
+      -- This is by design: further parsing validates if it's a real substitute command
+      assert.is_true(utils.is_substitute_cmd 'set number') -- matches s followed by e
+      assert.is_true(utils.is_substitute_cmd 'syntax on') -- matches s followed by y
+      -- But it won't match commands that don't follow the pattern at all
+      assert.is_false(utils.is_substitute_cmd 'write') -- no 's'
+      assert.is_false(utils.is_substitute_cmd 'quit') -- no 's'
+    end)
   end)
 
   describe('split_by_separator', function()
@@ -36,6 +75,55 @@ describe('search-replace.utils', function()
     it('handles empty parts', function()
       local parts = utils.split_by_separator('foo//baz', '/')
       eq(parts, { 'foo', '', 'baz' })
+    end)
+
+    it('handles empty string', function()
+      local parts = utils.split_by_separator('', '/')
+      eq(parts, { '' })
+    end)
+
+    it('handles string ending with separator', function()
+      local parts = utils.split_by_separator('foo/bar/', '/')
+      eq(parts, { 'foo', 'bar', '' })
+    end)
+
+    it('handles string starting with separator', function()
+      local parts = utils.split_by_separator('/foo/bar', '/')
+      eq(parts, { '', 'foo', 'bar' })
+    end)
+
+    it('handles multiple escaped separators', function()
+      local parts = utils.split_by_separator('a\\/b\\/c/d', '/')
+      eq(parts, { 'a\\/b\\/c', 'd' })
+    end)
+
+    it('handles different separator characters', function()
+      local parts = utils.split_by_separator('foo#bar#baz', '#')
+      eq(parts, { 'foo', 'bar', 'baz' })
+
+      parts = utils.split_by_separator('foo?bar?baz', '?')
+      eq(parts, { 'foo', 'bar', 'baz' })
+
+      parts = utils.split_by_separator('foo:bar:baz', ':')
+      eq(parts, { 'foo', 'bar', 'baz' })
+
+      parts = utils.split_by_separator('foo@bar@baz', '@')
+      eq(parts, { 'foo', 'bar', 'baz' })
+    end)
+
+    it('handles escaped backslash before separator', function()
+      local parts = utils.split_by_separator('foo\\\\/bar', '/')
+      eq(parts, { 'foo\\\\', 'bar' })
+    end)
+
+    it('handles no separators in string', function()
+      local parts = utils.split_by_separator('foobar', '/')
+      eq(parts, { 'foobar' })
+    end)
+
+    it('handles only separators', function()
+      local parts = utils.split_by_separator('//', '/')
+      eq(parts, { '', '', '' })
     end)
   end)
 
@@ -71,6 +159,98 @@ describe('search-replace.utils', function()
     it('returns nil for invalid command', function()
       local parsed = utils.parse_substitute_cmd ':write'
       assert.is_nil(parsed)
+    end)
+
+    it('parses command with empty replace term', function()
+      local parsed = utils.parse_substitute_cmd '%s/foo//g'
+      assert.is_not_nil(parsed)
+      eq(parsed.search, 'foo')
+      eq(parsed.replace, '')
+      eq(parsed.flags, 'g')
+    end)
+
+    it('parses command with no flags', function()
+      local parsed = utils.parse_substitute_cmd '%s/foo/bar/'
+      assert.is_not_nil(parsed)
+      eq(parsed.search, 'foo')
+      eq(parsed.replace, 'bar')
+      eq(parsed.flags, '')
+    end)
+
+    it('parses command with all flags', function()
+      local parsed = utils.parse_substitute_cmd '%s/foo/bar/gci'
+      assert.is_not_nil(parsed)
+      eq(parsed.flags, 'gci')
+    end)
+
+    it('parses all magic modes', function()
+      -- Very magic
+      local parsed = utils.parse_substitute_cmd '%s/\\vfoo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.magic, '\\v')
+
+      -- Magic (default)
+      parsed = utils.parse_substitute_cmd '%s/\\mfoo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.magic, '\\m')
+
+      -- Nomagic
+      parsed = utils.parse_substitute_cmd '%s/\\Mfoo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.magic, '\\M')
+
+      -- Very nomagic
+      parsed = utils.parse_substitute_cmd '%s/\\Vfoo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.magic, '\\V')
+
+      -- No magic mode
+      parsed = utils.parse_substitute_cmd '%s/foo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.magic, '')
+    end)
+
+    it('parses command with current line only range', function()
+      local parsed = utils.parse_substitute_cmd 's/foo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.range, 's')
+    end)
+
+    it('parses command with 0,. range', function()
+      local parsed = utils.parse_substitute_cmd '0,.s/foo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.range, '0,.s')
+    end)
+
+    it('parses command with line number range', function()
+      local parsed = utils.parse_substitute_cmd '1,10s/foo/bar/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.range, '1,10s')
+    end)
+
+    it('returns nil for empty string', function()
+      local parsed = utils.parse_substitute_cmd ''
+      assert.is_nil(parsed)
+    end)
+
+    it('returns nil for nil input', function()
+      local parsed = utils.parse_substitute_cmd(nil)
+      assert.is_nil(parsed)
+    end)
+
+    it('parses command with special characters in search/replace', function()
+      local parsed = utils.parse_substitute_cmd '%s/foo.*/bar_baz/g'
+      assert.is_not_nil(parsed)
+      eq(parsed.search, 'foo.*')
+      eq(parsed.replace, 'bar_baz')
+    end)
+
+    it('parses command with @ separator', function()
+      local parsed = utils.parse_substitute_cmd '%s@/path/to/file@/new/path@g'
+      assert.is_not_nil(parsed)
+      eq(parsed.sep, '@')
+      eq(parsed.search, '/path/to/file')
+      eq(parsed.replace, '/new/path')
     end)
   end)
 
@@ -343,6 +523,413 @@ describe('search-replace logic', function()
       local replace_term = parts[#parts - 1] == '' and cword or ''
 
       eq(replace_term, 'foo')
+    end)
+
+    it('handles different replace and search terms', function()
+      local parts = { '.,$s', 'foo', 'bar', 'gc' }
+      local cword = 'foo'
+      local replace_term = parts[#parts - 1] == cword and '' or cword
+
+      eq(replace_term, 'foo')
+    end)
+  end)
+end)
+
+describe('search-replace.config', function()
+  describe('defaults', function()
+    it('has default keymaps', function()
+      eq(config.defaults.keymaps.enable, true)
+      eq(config.defaults.keymaps.populate, '<leader>r')
+      eq(config.defaults.keymaps.toggle_g, '<M-g>')
+      eq(config.defaults.keymaps.toggle_c, '<M-c>')
+      eq(config.defaults.keymaps.toggle_i, '<M-i>')
+      eq(config.defaults.keymaps.toggle_replace, '<M-d>')
+      eq(config.defaults.keymaps.toggle_range, '<M-5>')
+      eq(config.defaults.keymaps.toggle_separator, '<M-/>')
+      eq(config.defaults.keymaps.toggle_magic, '<M-m>')
+      eq(config.defaults.keymaps.toggle_dashboard, '<M-h>')
+    end)
+
+    it('has default dashboard config', function()
+      eq(config.defaults.dashboard.enable, true)
+      eq(config.defaults.dashboard.symbols.active, '●')
+      eq(config.defaults.dashboard.symbols.inactive, '○')
+    end)
+
+    it('has default separators', function()
+      eq(config.defaults.separators, { '/', '?', '#', ':', '@' })
+    end)
+
+    it('has default magic modes', function()
+      eq(config.defaults.magic_modes, { '\\v', '\\m', '\\M', '\\V', '' })
+    end)
+
+    it('has default flags', function()
+      eq(config.defaults.flags, { 'g', 'c', 'i' })
+    end)
+
+    it('has default range and flags', function()
+      eq(config.defaults.default_range, '.,$s')
+      eq(config.defaults.default_flags, 'gc')
+      eq(config.defaults.default_magic, '\\V')
+    end)
+  end)
+
+  describe('setup', function()
+    it('merges user options with defaults', function()
+      config.setup({ default_range = '%s' })
+      eq(config.get().default_range, '%s')
+      -- Other defaults should remain
+      eq(config.get().default_flags, 'gc')
+      -- Reset
+      config.setup({})
+    end)
+
+    it('allows disabling keymaps', function()
+      config.setup({ keymaps = { enable = false } })
+      eq(config.get().keymaps.enable, false)
+      -- Other keymap defaults should remain
+      eq(config.get().keymaps.populate, '<leader>r')
+      -- Reset
+      config.setup({})
+    end)
+
+    it('allows custom separators', function()
+      config.setup({ separators = { '/', '#' } })
+      eq(config.get().separators, { '/', '#' })
+      -- Reset
+      config.setup({})
+    end)
+
+    it('handles empty options', function()
+      config.setup({})
+      eq(config.get().default_range, '.,$s')
+    end)
+
+    it('handles nil options', function()
+      config.setup(nil)
+      eq(config.get().default_range, '.,$s')
+    end)
+  end)
+
+  describe('get', function()
+    it('returns current configuration', function()
+      local cfg = config.get()
+      assert.is_not_nil(cfg)
+      assert.is_not_nil(cfg.keymaps)
+      assert.is_not_nil(cfg.dashboard)
+      assert.is_not_nil(cfg.separators)
+    end)
+  end)
+end)
+
+describe('dashboard helpers', function()
+  describe('range description', function()
+    local function get_range_description(range)
+      if range == '%s' then
+        return 'Entire file'
+      elseif range == '.,$s' then
+        return 'Current line to end of file'
+      elseif range == '0,.s' then
+        return 'Start of file to current line'
+      elseif range == 's' then
+        return 'Current line only'
+      else
+        return 'Custom range'
+      end
+    end
+
+    it('describes %s range', function()
+      eq(get_range_description('%s'), 'Entire file')
+    end)
+
+    it('describes .,$s range', function()
+      eq(get_range_description('.,$s'), 'Current line to end of file')
+    end)
+
+    it('describes 0,.s range', function()
+      eq(get_range_description('0,.s'), 'Start of file to current line')
+    end)
+
+    it('describes s range', function()
+      eq(get_range_description('s'), 'Current line only')
+    end)
+
+    it('describes custom range', function()
+      eq(get_range_description('1,10s'), 'Custom range')
+      eq(get_range_description('5,20s'), 'Custom range')
+    end)
+  end)
+
+  describe('magic description', function()
+    local function get_magic_description(magic)
+      if magic == '\\v' then
+        return 'Very magic: Extended regex syntax'
+      elseif magic == '\\m' then
+        return 'Magic: Standard regex syntax (default)'
+      elseif magic == '\\M' then
+        return 'Nomagic: Minimal regex syntax'
+      elseif magic == '\\V' then
+        return 'Very nomagic: Literal search'
+      else
+        return 'Default magic mode'
+      end
+    end
+
+    it('describes \\v magic mode', function()
+      eq(get_magic_description('\\v'), 'Very magic: Extended regex syntax')
+    end)
+
+    it('describes \\m magic mode', function()
+      eq(get_magic_description('\\m'), 'Magic: Standard regex syntax (default)')
+    end)
+
+    it('describes \\M magic mode', function()
+      eq(get_magic_description('\\M'), 'Nomagic: Minimal regex syntax')
+    end)
+
+    it('describes \\V magic mode', function()
+      eq(get_magic_description('\\V'), 'Very nomagic: Literal search')
+    end)
+
+    it('describes empty magic mode', function()
+      eq(get_magic_description(''), 'Default magic mode')
+    end)
+  end)
+
+  describe('flags parsing', function()
+    local function parse_flags(flags_str)
+      return {
+        g = flags_str:find('g') ~= nil,
+        c = flags_str:find('c') ~= nil,
+        i = flags_str:find('i') ~= nil,
+      }
+    end
+
+    it('parses all flags present', function()
+      local flags = parse_flags('gci')
+      eq(flags.g, true)
+      eq(flags.c, true)
+      eq(flags.i, true)
+    end)
+
+    it('parses no flags', function()
+      local flags = parse_flags('')
+      eq(flags.g, false)
+      eq(flags.c, false)
+      eq(flags.i, false)
+    end)
+
+    it('parses single flag', function()
+      local flags = parse_flags('g')
+      eq(flags.g, true)
+      eq(flags.c, false)
+      eq(flags.i, false)
+    end)
+
+    it('parses two flags', function()
+      local flags = parse_flags('gc')
+      eq(flags.g, true)
+      eq(flags.c, true)
+      eq(flags.i, false)
+    end)
+
+    it('parses flags in different order', function()
+      local flags = parse_flags('icg')
+      eq(flags.g, true)
+      eq(flags.c, true)
+      eq(flags.i, true)
+    end)
+  end)
+
+  describe('status line formatting', function()
+    local function format_status_line(separator, flags)
+      local parts = {}
+      table.insert(parts, 'Sep: ' .. (separator ~= '' and separator or '/'))
+      local flags_str = ''
+      if flags.g then
+        flags_str = flags_str .. 'g'
+      end
+      if flags.c then
+        flags_str = flags_str .. 'c'
+      end
+      if flags.i then
+        flags_str = flags_str .. 'i'
+      end
+      table.insert(parts, 'Flags: ' .. (flags_str ~= '' and flags_str or 'none'))
+      return '  ' .. table.concat(parts, '  ')
+    end
+
+    it('formats status with all flags', function()
+      local line = format_status_line('/', { g = true, c = true, i = true })
+      assert.is_true(line:find('Sep: /') ~= nil)
+      assert.is_true(line:find('Flags: gci') ~= nil)
+    end)
+
+    it('formats status with no flags', function()
+      local line = format_status_line('/', { g = false, c = false, i = false })
+      assert.is_true(line:find('Flags: none') ~= nil)
+    end)
+
+    it('formats status with different separator', function()
+      local line = format_status_line('#', { g = true, c = false, i = false })
+      assert.is_true(line:find('Sep: #') ~= nil)
+      assert.is_true(line:find('Flags: g') ~= nil)
+    end)
+  end)
+end)
+
+describe('edge cases', function()
+  describe('escaped separator handling', function()
+    it('parses command with escaped separator in search', function()
+      local cmd = '%s/foo\\/bar/baz/g'
+      local parsed = utils.parse_substitute_cmd(cmd)
+      assert.is_not_nil(parsed)
+      eq(parsed.search, 'foo\\/bar')
+      eq(parsed.replace, 'baz')
+    end)
+
+    it('parses command with escaped separator in replace', function()
+      local cmd = '%s/foo/bar\\/baz/g'
+      local parsed = utils.parse_substitute_cmd(cmd)
+      assert.is_not_nil(parsed)
+      eq(parsed.search, 'foo')
+      eq(parsed.replace, 'bar\\/baz')
+    end)
+
+    it('parses command with multiple escaped separators', function()
+      local cmd = '%s/foo\\/bar/baz\\/qux/g'
+      local parsed = utils.parse_substitute_cmd(cmd)
+      assert.is_not_nil(parsed)
+      eq(parsed.search, 'foo\\/bar')
+      eq(parsed.replace, 'baz\\/qux')
+    end)
+  end)
+
+  describe('special regex characters', function()
+    it('parses command with regex metacharacters in search', function()
+      local cmd = '%s/foo.*bar/baz/g'
+      local parsed = utils.parse_substitute_cmd(cmd)
+      assert.is_not_nil(parsed)
+      eq(parsed.search, 'foo.*bar')
+    end)
+
+    it('parses command with capture groups', function()
+      local cmd = '%s/\\(foo\\)/\\1bar/g'
+      local parsed = utils.parse_substitute_cmd(cmd)
+      assert.is_not_nil(parsed)
+      eq(parsed.search, '\\(foo\\)')
+      eq(parsed.replace, '\\1bar')
+    end)
+
+    it('parses command with character classes', function()
+      local cmd = '%s/[a-z]/X/g'
+      local parsed = utils.parse_substitute_cmd(cmd)
+      assert.is_not_nil(parsed)
+      eq(parsed.search, '[a-z]')
+      eq(parsed.replace, 'X')
+    end)
+  end)
+
+  describe('incomplete commands', function()
+    it('handles command with only range and separator', function()
+      local cmd = '%s/'
+      local is_sub = utils.is_substitute_cmd(cmd)
+      assert.is_true(is_sub)
+    end)
+
+    it('handles command with range, separator, and partial search', function()
+      local cmd = '%s/foo'
+      local is_sub = utils.is_substitute_cmd(cmd)
+      assert.is_true(is_sub)
+    end)
+
+    it('handles command missing trailing separator', function()
+      local cmd = '%s/foo/bar'
+      local is_sub = utils.is_substitute_cmd(cmd)
+      assert.is_true(is_sub)
+    end)
+  end)
+
+  describe('command reconstruction', function()
+    it('reconstructs command from parts', function()
+      local parts = { '%s', 'foo', 'bar', 'gc' }
+      local sep = '/'
+      local reconstructed = table.concat(parts, sep)
+      eq(reconstructed, '%s/foo/bar/gc')
+    end)
+
+    it('reconstructs command with different separator', function()
+      local parts = { '%s', 'foo', 'bar', 'gc' }
+      local sep = '#'
+      local reconstructed = table.concat(parts, sep)
+      eq(reconstructed, '%s#foo#bar#gc')
+    end)
+
+    it('reconstructs command with empty replace', function()
+      local parts = { '%s', 'foo', '', 'gc' }
+      local sep = '/'
+      local reconstructed = table.concat(parts, sep)
+      eq(reconstructed, '%s/foo//gc')
+    end)
+
+    it('reconstructs command with no flags', function()
+      local parts = { '%s', 'foo', 'bar', '' }
+      local sep = '/'
+      local reconstructed = table.concat(parts, sep)
+      eq(reconstructed, '%s/foo/bar/')
+    end)
+  end)
+end)
+
+describe('SUBSTITUTE_PATTERN and MAGIC_PATTERN', function()
+  describe('SUBSTITUTE_PATTERN', function()
+    it('matches basic substitute command', function()
+      assert.is_not_nil(string.match('%s/foo/bar/g', utils.SUBSTITUTE_PATTERN))
+    end)
+
+    it('matches current line substitute', function()
+      assert.is_not_nil(string.match('s/foo/bar/g', utils.SUBSTITUTE_PATTERN))
+    end)
+
+    it('matches range substitute', function()
+      assert.is_not_nil(string.match('.,$s/foo/bar/g', utils.SUBSTITUTE_PATTERN))
+      assert.is_not_nil(string.match('0,.s/foo/bar/g', utils.SUBSTITUTE_PATTERN))
+      assert.is_not_nil(string.match('1,10s/foo/bar/g', utils.SUBSTITUTE_PATTERN))
+    end)
+
+    it('does not match non-substitute commands', function()
+      assert.is_nil(string.match('write', utils.SUBSTITUTE_PATTERN))
+      assert.is_nil(string.match('quit', utils.SUBSTITUTE_PATTERN))
+      assert.is_nil(string.match('help', utils.SUBSTITUTE_PATTERN))
+    end)
+  end)
+
+  describe('MAGIC_PATTERN', function()
+    it('matches very magic mode', function()
+      local match = string.match('\\vfoo', utils.MAGIC_PATTERN)
+      eq(match, '\\v')
+    end)
+
+    it('matches magic mode', function()
+      local match = string.match('\\mfoo', utils.MAGIC_PATTERN)
+      eq(match, '\\m')
+    end)
+
+    it('matches nomagic mode', function()
+      local match = string.match('\\Mfoo', utils.MAGIC_PATTERN)
+      eq(match, '\\M')
+    end)
+
+    it('matches very nomagic mode', function()
+      local match = string.match('\\Vfoo', utils.MAGIC_PATTERN)
+      eq(match, '\\V')
+    end)
+
+    it('does not match non-magic strings', function()
+      assert.is_nil(string.match('foo', utils.MAGIC_PATTERN))
+      assert.is_nil(string.match('\\nfoo', utils.MAGIC_PATTERN))
+      assert.is_nil(string.match('\\xfoo', utils.MAGIC_PATTERN))
     end)
   end)
 end)

@@ -1,11 +1,29 @@
---- search-replace.nvim
---- A Neovim plugin for enhanced search and replace with a floating dashboard
+---@brief [[
+---search-replace.nvim is a Neovim plugin for enhanced search and replace with
+---a floating dashboard.
 ---
---- Usage:
----   require('search-replace').setup({
----     -- your configuration here
----   })
+---Features:
+---- Quick keymaps to populate substitute commands with word under cursor
+---- Toggle flags (g/c/i) during command-line editing
+---- Cycle through ranges, separators, and magic modes
+---- Live dashboard showing current state during editing
 ---
+---Usage:
+---<pre>
+---require('search-replace').setup({
+---  keymaps = {
+---    enable = true,
+---    populate = '<leader>r',
+---  },
+---  dashboard = {
+---    enable = true,
+---  },
+---})
+---</pre>
+---@brief ]]
+
+---@tag search-replace.nvim
+
 ---@class SearchReplace
 ---@field setup fun(opts?: SearchReplaceConfig) Setup the plugin with user configuration
 ---@field populate_searchline fun(mode: string): string, integer Populate the search line

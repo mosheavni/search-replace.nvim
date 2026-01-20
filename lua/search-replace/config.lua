@@ -1,5 +1,19 @@
---- Centralized configuration for search-replace.nvim
---- All default values and type definitions live here
+---@brief [[
+---Centralized configuration for search-replace.nvim.
+---
+---All default values and type definitions live here. This module provides
+---a single source of truth for configuration across all other modules.
+---
+---Configuration structure:
+---- `keymaps` - Keymap bindings for normal, visual, and command-line modes
+---- `dashboard` - Dashboard appearance settings (symbols, highlights)
+---- `separators` - Available separator characters for substitute commands
+---- `magic_modes` - Available regex magic modes (\v, \m, \M, \V)
+---- `flags` - Available substitute flags (g, c, i)
+---- `default_*` - Default values for new substitute commands
+---@brief ]]
+
+---@tag search-replace.config
 
 ---@class SearchReplaceKeymapConfig
 ---@field enable boolean Whether to enable keymaps

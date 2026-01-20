@@ -1,9 +1,29 @@
---- Generic floating window module (inspired by mini.notify architecture)
---- Provides a reusable floating window implementation with proper event handling,
---- buffer/window caching, and immediate display via forced redraw.
+---@brief [[
+---Generic floating window module for search-replace.nvim.
 ---
---- Part of search-replace.nvim plugin
+---Provides a reusable floating window implementation inspired by mini.notify
+---architecture. Key features:
+---- Buffer/window caching for efficient updates
+---- Proper event handling with `vim.schedule()` for fast event context
+---- Immediate display via forced `vim.cmd('redraw')`
+---- Supports custom content, configuration, and highlight functions
 ---
+---Usage:
+---<pre>
+---local Float = require('search-replace.float')
+---local float = Float.new()
+---
+---float.refresh(
+---  function() return { 'Line 1', 'Line 2' } end,  -- content
+---  function(buf_id) return { relative = 'editor', ... } end,  -- config
+---  function() return { wrap = false } end,  -- window options
+---  function(buf_id, lines) --[[ apply highlights ]] end  -- highlights
+---)
+---</pre>
+---@brief ]]
+
+---@tag search-replace.float
+
 ---@class Float
 ---@field new fun(): FloatInstance Create a new float instance
 local M = {}

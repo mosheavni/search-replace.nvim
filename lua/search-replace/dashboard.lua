@@ -1,5 +1,25 @@
 ---@diagnostic disable: undefined-field
 
+---@brief [[
+---Dashboard UI for search-replace.nvim.
+---
+---Displays a floating window showing the current state of the substitute
+---command during command-line editing. The dashboard auto-detects substitute
+---commands and updates in real-time as you type.
+---
+---Features:
+---- Parses substitute commands and displays range, magic mode, flags
+---- Shows search and replace terms with magic prefix stripped
+---- Displays keymap hints with active/inactive indicators
+---- Uses syntax highlighting via extmarks
+---- Respects user's manual toggle (hidden state)
+---
+---The dashboard uses `CmdlineChanged` autocmd to detect and refresh for any
+---substitute command, not just those started via the plugin keymaps.
+---@brief ]]
+
+---@tag search-replace.dashboard
+
 ---@class SearchReplaceDashboard
 ---@field invalidate_cache fun() Invalidate the dashboard cache
 ---@field refresh_dashboard fun(cmdline?: string) Refresh the dashboard with current cmdline state

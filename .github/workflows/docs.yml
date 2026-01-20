@@ -1,0 +1,53 @@
+name: Generate Vim Docs
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "lua/**"
+      - "README.md"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "lua/**"
+      - "README.md"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install doc tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y pandoc
+          cargo install lemmy-help
+
+      - name: Generate docs
+        run: make docs
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: vim-docs
+          path: doc/
+
+      - name: Commit and push docs
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add doc/
+          git diff --staged --quiet || git commit -m "docs: auto-generate vim documentation"
+          git push

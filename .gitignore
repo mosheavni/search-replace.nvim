@@ -16,3 +16,6 @@ Thumbs.db
 
 # Test output
 .tests/
+
+# Doc generation
+.panvimdoc/

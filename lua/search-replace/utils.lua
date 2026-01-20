@@ -1,6 +1,20 @@
---- Shared utilities for search-replace functionality
---- Part of search-replace.nvim plugin
+---@brief [[
+---Shared utilities for search-replace.nvim.
 ---
+---This module provides common functions used across the plugin:
+---- Pattern constants for substitute command detection
+---- `parse_substitute_cmd()` - Parses `:s` commands into components
+---- `split_by_separator()` - Splits strings while respecting escaped separators
+---- `trigger_cmdline_refresh()` - Forces cmdline refresh via fake keystroke
+---- `normalize_parts()` - Ensures command parts array has 4 elements
+---- `get_visual_selection()` - Retrieves visual selection text
+---
+---The fake keystroke technique (space + backspace) is used because direct
+---redraws don't work properly in command-line mode.
+---@brief ]]
+
+---@tag search-replace.utils
+
 ---@class SearchReplaceUtils
 ---@field SUBSTITUTE_PATTERN string Pattern to match substitute commands
 ---@field MAGIC_PATTERN string Pattern to match magic mode prefixes

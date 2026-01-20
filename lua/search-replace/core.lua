@@ -1,6 +1,22 @@
---- Core search-replace functionality
---- Part of search-replace.nvim plugin
+---@brief [[
+---Core business logic for search-replace.nvim.
 ---
+---This module manages the search-replace state and provides toggle functions
+---that manipulate the command line during substitute command editing.
+---
+---Key concepts:
+---- `sar_state` tracks the active session, current word, separator, and magic mode
+---- Toggle functions return keystroke sequences using the `<C-\>e` expression pattern
+---- All toggle functions use `set_cmd_and_pos()` to update command and cursor atomically
+---- `should_sar()` detects if the current cmdline is a substitute command
+---
+---The `<C-\>e` pattern allows replacing the entire command line via expression
+---evaluation, which is necessary because direct command line manipulation is
+---not possible in cmdline mode.
+---@brief ]]
+
+---@tag search-replace.core
+
 ---@class SearchReplaceCore
 ---@field setup fun(opts?: CoreConfig) Setup the core module with configuration
 ---@field is_active fun(): boolean Check if search-replace mode is active

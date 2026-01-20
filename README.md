@@ -2,6 +2,9 @@
 
 # search-replace.nvim
 
+[![Lint](https://github.com/mosheavni/search-replace.nvim/actions/workflows/lint.yml/badge.svg)](https://github.com/mosheavni/search-replace.nvim/actions/workflows/lint.yml)
+[![Tests](https://github.com/mosheavni/search-replace.nvim/actions/workflows/test.yml/badge.svg)](https://github.com/mosheavni/search-replace.nvim/actions/workflows/test.yml)
+
 A Neovim plugin for enhanced search and replace with a floating dashboard that shows all available keymaps and current state.
 
 ## Features

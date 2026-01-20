@@ -132,7 +132,7 @@ local function get_range_description(range)
     return 'Current line to end of file'
   elseif range == '0,.s' then
     return 'Start of file to current line'
-  elseif range == 's' then
+  elseif range == 's' or range == '.s' then
     return 'Current line only'
   else
     return 'Custom range'

@@ -7,6 +7,8 @@
 
 A Neovim plugin for enhanced search and replace with a floating dashboard that shows all available keymaps and current state.
 
+![demo](https://github.com/user-attachments/assets/f5f3a567-76b7-4073-8321-635a7d4851e8)
+
 ## Features
 
 - **Quick populate**: Press `<leader>r` to populate the command line with a search-replace command using the word under cursor or visual selection

@@ -11,7 +11,6 @@
 ---@field toggle_all_file fun(): string Toggle range (all file)
 ---@field toggle_separator fun(): string Toggle separator
 ---@field toggle_magic fun(): string Toggle magic mode
----@field get_config fun(): CoreConfig Get the current configuration
 local M = {}
 
 local utils = require('search-replace.utils')
@@ -24,18 +23,9 @@ local utils = require('search-replace.utils')
 ---@field default_flags string Default flags for substitute command
 ---@field default_magic string Default magic mode
 
+-- Config is set by setup() from init.lua, which uses centralized config.lua defaults
 ---@type CoreConfig
-local default_config = {
-  separators = { '/', '?', '#', ':', '@' },
-  magic_modes = { '\\v', '\\m', '\\M', '\\V', '' },
-  flags = { 'g', 'c', 'i' },
-  default_range = '.,$s',
-  default_flags = 'gc',
-  default_magic = '\\V',
-}
-
----@type CoreConfig
-local config = vim.deepcopy(default_config)
+local config
 
 ---@class SarState
 ---@field active boolean Whether search-replace mode is active
@@ -325,13 +315,11 @@ function M.toggle_magic()
 end
 
 ---Setup the core module with configuration
----@param opts? CoreConfig Configuration options
+---@param opts CoreConfig Configuration options (required, provided by init.lua)
 ---@return nil
 function M.setup(opts)
-  opts = opts or {}
-
-  -- Merge configuration
-  config = vim.tbl_deep_extend('force', default_config, opts)
+  -- Config is provided by init.lua from centralized config.lua
+  config = opts
 
   -- Autocommand to deactivate search-replace mode when leaving cmdline
   vim.api.nvim_create_autocmd('CmdlineLeave', {
@@ -340,12 +328,6 @@ function M.setup(opts)
       sar_state.active = false
     end,
   })
-end
-
----Get the current configuration
----@return CoreConfig config The current configuration
-function M.get_config()
-  return config
 end
 
 return M

@@ -64,37 +64,9 @@ end
 ---@field highlights DashboardHighlights Highlight groups configuration
 ---@field keymaps KeymapInfo[] Keymap information
 
+-- Config is set by setup() from init.lua, which uses centralized config.lua defaults
 ---@type DashboardSetupConfig
-local default_config = {
-  symbols = {
-    active = '*',
-    inactive = 'o',
-  },
-  highlights = {
-    title = 'Title',
-    key = 'Special',
-    arrow = 'Comment',
-    active_desc = 'String',
-    inactive_desc = 'Comment',
-    active_indicator = 'DiagnosticOk',
-    inactive_indicator = 'Comment',
-    status_label = 'Comment',
-    status_value = 'Constant',
-  },
-  keymaps = {
-    { key = '<M-g>', flag = 'g', desc = "Toggle 'g' flag (global)" },
-    { key = '<M-c>', flag = 'c', desc = "Toggle 'c' flag (confirm)" },
-    { key = '<M-i>', flag = 'i', desc = "Toggle 'i' flag (case-insensitive)" },
-    { key = '<M-d>', flag = nil, desc = 'Toggle replace term' },
-    { key = '<M-5>', flag = nil, desc = 'Cycle range' },
-    { key = '<M-/>', flag = nil, desc = 'Cycle separator' },
-    { key = '<M-m>', flag = nil, desc = 'Cycle magic mode' },
-    { key = '<M-h>', flag = nil, desc = 'Toggle dashboard' },
-  },
-}
-
----@type DashboardSetupConfig
-local config = vim.deepcopy(default_config)
+local config
 
 ---@class ParsedCommand
 ---@field range string The range part (e.g., ".,$s", "%s")
@@ -249,20 +221,13 @@ local function format_search_replace_lines(parsed)
   }
 end
 
----Get keymap information with state checking
----@return KeymapInfo[] keymaps The keymap information
-local function get_keymaps_info()
-  return config.keymaps
-end
-
 ---Format the keymap lines with state indicators
 ---@param parsed ParsedCommand The parsed command
 ---@return string[] keymap_lines The formatted keymap lines
 local function format_keymap_lines(parsed)
   local lines = {}
-  local keymaps = get_keymaps_info()
 
-  for _, km in ipairs(keymaps) do
+  for _, km in ipairs(config.keymaps) do
     local indicator = '  '
     if km.flag then
       -- Check if this flag is active
@@ -443,8 +408,7 @@ local function apply_highlights(buf_id, lines, parsed)
   -- Line 12: Empty (separator)
 
   -- Lines 13+: Keymap lines
-  local keymaps = get_keymaps_info()
-  for i, km in ipairs(keymaps) do
+  for i, km in ipairs(config.keymaps) do
     local line_idx = 13 + i - 1
     local line = lines[line_idx + 1]
 
@@ -640,13 +604,11 @@ function M.toggle_dashboard()
 end
 
 ---Setup autocmds for the dashboard
----@param opts? DashboardSetupConfig Configuration options
+---@param opts DashboardSetupConfig Configuration options (required, provided by init.lua)
 ---@return nil
 function M.setup(opts)
-  opts = opts or {}
-
-  -- Merge configuration
-  config = vim.tbl_deep_extend('force', default_config, opts)
+  -- Config is provided by init.lua from centralized config.lua
+  config = opts
 
   local augroup = vim.api.nvim_create_augroup('SearchReplaceDashboard', { clear = true })
 

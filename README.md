@@ -71,8 +71,8 @@ require('search-replace').setup({
   dashboard = {
     enable = true,
     symbols = {
-      active = '*', -- Symbol for active flag
-      inactive = 'o', -- Symbol for inactive flag
+      active = '●', -- Active flag indicator
+      inactive = '○', -- Inactive flag indicator
     },
     highlights = {
       title = 'Title',

@@ -1,22 +1,22 @@
 ---@diagnostic disable: undefined-field
 --# selene: allow(undefined_variable)
-local utils = require 'search-replace.utils'
-local config = require 'search-replace.config'
-local float = require 'search-replace.float'
+local utils = require('search-replace.utils')
+local config = require('search-replace.config')
+local float = require('search-replace.float')
 local eq = assert.are.same
 
 describe('search-replace.utils', function()
   describe('is_substitute_cmd', function()
     it('detects basic substitute command', function()
-      assert.is_true(utils.is_substitute_cmd '%s/foo/bar/g')
+      assert.is_true(utils.is_substitute_cmd('%s/foo/bar/g'))
     end)
 
     it('detects range substitute command', function()
-      assert.is_true(utils.is_substitute_cmd '.,$s/foo/bar/g')
+      assert.is_true(utils.is_substitute_cmd('.,$s/foo/bar/g'))
     end)
 
     it('rejects non-substitute command', function()
-      assert.is_false(utils.is_substitute_cmd ':write')
+      assert.is_false(utils.is_substitute_cmd(':write'))
     end)
 
     it('rejects nil input', function()
@@ -24,41 +24,41 @@ describe('search-replace.utils', function()
     end)
 
     it('rejects empty string', function()
-      assert.is_false(utils.is_substitute_cmd '')
+      assert.is_false(utils.is_substitute_cmd(''))
     end)
 
     it('detects substitute with line number range', function()
-      assert.is_true(utils.is_substitute_cmd '1,10s/foo/bar/')
+      assert.is_true(utils.is_substitute_cmd('1,10s/foo/bar/'))
     end)
 
     it('detects substitute with current line only', function()
-      assert.is_true(utils.is_substitute_cmd 's/foo/bar/')
+      assert.is_true(utils.is_substitute_cmd('s/foo/bar/'))
     end)
 
     it('detects substitute with 0,. range', function()
-      assert.is_true(utils.is_substitute_cmd '0,.s/foo/bar/')
+      assert.is_true(utils.is_substitute_cmd('0,.s/foo/bar/'))
     end)
 
     it('detects substitute with different separators', function()
-      assert.is_true(utils.is_substitute_cmd '%s#foo#bar#g')
-      assert.is_true(utils.is_substitute_cmd '%s?foo?bar?g')
-      assert.is_true(utils.is_substitute_cmd '%s:foo:bar:g')
-      assert.is_true(utils.is_substitute_cmd '%s@foo@bar@g')
+      assert.is_true(utils.is_substitute_cmd('%s#foo#bar#g'))
+      assert.is_true(utils.is_substitute_cmd('%s?foo?bar?g'))
+      assert.is_true(utils.is_substitute_cmd('%s:foo:bar:g'))
+      assert.is_true(utils.is_substitute_cmd('%s@foo@bar@g'))
     end)
 
     it('detects incomplete substitute command', function()
-      assert.is_true(utils.is_substitute_cmd '%s/')
-      assert.is_true(utils.is_substitute_cmd '.,$s#')
+      assert.is_true(utils.is_substitute_cmd('%s/'))
+      assert.is_true(utils.is_substitute_cmd('.,$s#'))
     end)
 
     it('matches commands starting with s and any char (loose detection)', function()
       -- The pattern is intentionally loose - it matches 's' followed by any character
       -- This is by design: further parsing validates if it's a real substitute command
-      assert.is_true(utils.is_substitute_cmd 'set number') -- matches s followed by e
-      assert.is_true(utils.is_substitute_cmd 'syntax on') -- matches s followed by y
+      assert.is_true(utils.is_substitute_cmd('set number')) -- matches s followed by e
+      assert.is_true(utils.is_substitute_cmd('syntax on')) -- matches s followed by y
       -- But it won't match commands that don't follow the pattern at all
-      assert.is_false(utils.is_substitute_cmd 'write') -- no 's'
-      assert.is_false(utils.is_substitute_cmd 'quit') -- no 's'
+      assert.is_false(utils.is_substitute_cmd('write')) -- no 's'
+      assert.is_false(utils.is_substitute_cmd('quit')) -- no 's'
     end)
   end)
 
@@ -130,7 +130,7 @@ describe('search-replace.utils', function()
 
   describe('parse_substitute_cmd', function()
     it('parses basic substitute command', function()
-      local parsed = utils.parse_substitute_cmd '%s/foo/bar/g'
+      local parsed = utils.parse_substitute_cmd('%s/foo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.range, '%s')
       eq(parsed.sep, '/')
@@ -140,7 +140,7 @@ describe('search-replace.utils', function()
     end)
 
     it('parses command with magic mode', function()
-      local parsed = utils.parse_substitute_cmd '.,$s/\\Vfoo/bar/gc'
+      local parsed = utils.parse_substitute_cmd('.,$s/\\Vfoo/bar/gc')
       assert.is_not_nil(parsed)
       eq(parsed.range, '.,$s')
       eq(parsed.magic, '\\V')
@@ -150,7 +150,7 @@ describe('search-replace.utils', function()
     end)
 
     it('parses command with different separator', function()
-      local parsed = utils.parse_substitute_cmd '%s#foo#bar#g'
+      local parsed = utils.parse_substitute_cmd('%s#foo#bar#g')
       assert.is_not_nil(parsed)
       eq(parsed.sep, '#')
       eq(parsed.search, 'foo')
@@ -158,12 +158,12 @@ describe('search-replace.utils', function()
     end)
 
     it('returns nil for invalid command', function()
-      local parsed = utils.parse_substitute_cmd ':write'
+      local parsed = utils.parse_substitute_cmd(':write')
       assert.is_nil(parsed)
     end)
 
     it('parses command with empty replace term', function()
-      local parsed = utils.parse_substitute_cmd '%s/foo//g'
+      local parsed = utils.parse_substitute_cmd('%s/foo//g')
       assert.is_not_nil(parsed)
       eq(parsed.search, 'foo')
       eq(parsed.replace, '')
@@ -171,7 +171,7 @@ describe('search-replace.utils', function()
     end)
 
     it('parses command with no flags', function()
-      local parsed = utils.parse_substitute_cmd '%s/foo/bar/'
+      local parsed = utils.parse_substitute_cmd('%s/foo/bar/')
       assert.is_not_nil(parsed)
       eq(parsed.search, 'foo')
       eq(parsed.replace, 'bar')
@@ -179,58 +179,58 @@ describe('search-replace.utils', function()
     end)
 
     it('parses command with all flags', function()
-      local parsed = utils.parse_substitute_cmd '%s/foo/bar/gci'
+      local parsed = utils.parse_substitute_cmd('%s/foo/bar/gci')
       assert.is_not_nil(parsed)
       eq(parsed.flags, 'gci')
     end)
 
     it('parses all magic modes', function()
       -- Very magic
-      local parsed = utils.parse_substitute_cmd '%s/\\vfoo/bar/g'
+      local parsed = utils.parse_substitute_cmd('%s/\\vfoo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.magic, '\\v')
 
       -- Magic (default)
-      parsed = utils.parse_substitute_cmd '%s/\\mfoo/bar/g'
+      parsed = utils.parse_substitute_cmd('%s/\\mfoo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.magic, '\\m')
 
       -- Nomagic
-      parsed = utils.parse_substitute_cmd '%s/\\Mfoo/bar/g'
+      parsed = utils.parse_substitute_cmd('%s/\\Mfoo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.magic, '\\M')
 
       -- Very nomagic
-      parsed = utils.parse_substitute_cmd '%s/\\Vfoo/bar/g'
+      parsed = utils.parse_substitute_cmd('%s/\\Vfoo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.magic, '\\V')
 
       -- No magic mode
-      parsed = utils.parse_substitute_cmd '%s/foo/bar/g'
+      parsed = utils.parse_substitute_cmd('%s/foo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.magic, '')
     end)
 
     it('parses command with current line only range', function()
-      local parsed = utils.parse_substitute_cmd 's/foo/bar/g'
+      local parsed = utils.parse_substitute_cmd('s/foo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.range, 's')
     end)
 
     it('parses command with 0,. range', function()
-      local parsed = utils.parse_substitute_cmd '0,.s/foo/bar/g'
+      local parsed = utils.parse_substitute_cmd('0,.s/foo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.range, '0,.s')
     end)
 
     it('parses command with line number range', function()
-      local parsed = utils.parse_substitute_cmd '1,10s/foo/bar/g'
+      local parsed = utils.parse_substitute_cmd('1,10s/foo/bar/g')
       assert.is_not_nil(parsed)
       eq(parsed.range, '1,10s')
     end)
 
     it('returns nil for empty string', function()
-      local parsed = utils.parse_substitute_cmd ''
+      local parsed = utils.parse_substitute_cmd('')
       assert.is_nil(parsed)
     end)
 
@@ -240,14 +240,14 @@ describe('search-replace.utils', function()
     end)
 
     it('parses command with special characters in search/replace', function()
-      local parsed = utils.parse_substitute_cmd '%s/foo.*/bar_baz/g'
+      local parsed = utils.parse_substitute_cmd('%s/foo.*/bar_baz/g')
       assert.is_not_nil(parsed)
       eq(parsed.search, 'foo.*')
       eq(parsed.replace, 'bar_baz')
     end)
 
     it('parses command with @ separator', function()
-      local parsed = utils.parse_substitute_cmd '%s@/path/to/file@/new/path@g'
+      local parsed = utils.parse_substitute_cmd('%s@/path/to/file@/new/path@g')
       assert.is_not_nil(parsed)
       eq(parsed.sep, '@')
       eq(parsed.search, '/path/to/file')
@@ -257,25 +257,25 @@ describe('search-replace.utils', function()
 
   describe('normalize_parts', function()
     it('normalizes single element', function()
-      local parts = utils.normalize_parts { '.,$s' }
+      local parts = utils.normalize_parts({ '.,$s' })
       eq(#parts, 4)
       eq(parts[1], '.,$s')
     end)
 
     it('normalizes two elements', function()
-      local parts = utils.normalize_parts { '.,$s', 'foo' }
+      local parts = utils.normalize_parts({ '.,$s', 'foo' })
       eq(#parts, 4)
       eq(parts[3], 'foo') -- Replace copied from search
     end)
 
     it('normalizes three elements', function()
-      local parts = utils.normalize_parts { '.,$s', 'foo', 'bar' }
+      local parts = utils.normalize_parts({ '.,$s', 'foo', 'bar' })
       eq(#parts, 4)
       eq(parts[4], '') -- Empty flags
     end)
 
     it('keeps four elements unchanged', function()
-      local parts = utils.normalize_parts { '.,$s', 'foo', 'bar', 'gc' }
+      local parts = utils.normalize_parts({ '.,$s', 'foo', 'bar', 'gc' })
       eq(#parts, 4)
       eq(parts[4], 'gc')
     end)

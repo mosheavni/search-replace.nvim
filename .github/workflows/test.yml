@@ -1,0 +1,38 @@
+name: Tests
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: unit tests
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim: [stable, nightly]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim }}
+
+      - name: Cache stylua
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/stylua
+          key: stylua-${{ runner.os }}-${{ hashFiles('Makefile') }}
+
+      - name: Install dependencies
+        run: make prepare
+
+      - name: Run tests
+        run: |
+          nvim --version
+          make test

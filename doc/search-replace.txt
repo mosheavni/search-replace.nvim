@@ -1,32 +1,31 @@
-*search-replace.txt*   For NVIM v0.12.0  Last change: Tue Jan 20 12:31:17 2026
+==============================================================================
+Table of Contents                                      *search-replace.contents*
+
+Introduction ············································· |search-replace.nvim|
+Installation ····································· |search-replace.installation|
+Default Keymaps ······································· |search-replace.keymaps|
+Magic Modes ············································· |search-replace.magic|
+Tips ····················································· |search-replace.tips|
+Configuration ·········································· |search-replace.config|
+API ······················································· |search-replace.api|
 
 ==============================================================================
-1. search-replace.nvim                    *search-replace-search-replace.nvim*
+Introduction                                               *search-replace.nvim*
 
-<https://github.com/mosheavni/search-replace.nvim/actions/workflows/lint.yml>
-<https://github.com/mosheavni/search-replace.nvim/actions/workflows/test.yml>
+search-replace.nvim is a Neovim plugin for enhanced search and replace with
+a floating dashboard.
 
-A Neovim plugin for enhanced search and replace with a floating dashboard that
-shows all available keymaps and current state.
+Features:
+- Quick keymaps to populate substitute commands with word under cursor
+- Toggle flags (g/c/i) during command-line editing
+- Cycle through ranges, separators, and magic modes
+- Live dashboard showing current state during editing
+- Auto-detect any substitute command to show the dashboard
 
+==============================================================================
+Installation                                       *search-replace.installation*
 
-FEATURES                                             *search-replace-features*
-
-- **Quick populate**: Press `<leader>r` to populate the command line with a search-replace command using the word under cursor or visual selection
-- **Live dashboard**: A floating window that shows all available keymaps and the current state of your search-replace command
-- **Toggle flags**: Quickly toggle `g` (global), `c` (confirm), and `i` (case-insensitive) flags
-- **Cycle ranges**: Cycle through range options (`%s`, `.,$s`, `0,.s`)
-- **Cycle separators**: Change the separator character (`/`, `?`, `#`, `:`, `@`)
-- **Cycle magic modes**: Toggle between Vim magic modes (`\v`, `\m`, `\M`, `\V`, none)
-- **Toggle replace term**: Quickly clear or restore the replace term
-- **Auto-detect**: Dashboard automatically appears when typing any substitute command
-
-
-INSTALLATION                                     *search-replace-installation*
-
-
-LAZY.NVIM ~
-
+lazy.nvim:
 >lua
     {
       'mosheavni/search-replace.nvim',
@@ -36,9 +35,7 @@ LAZY.NVIM ~
     }
 <
 
-
-PACKER.NVIM ~
-
+packer.nvim:
 >lua
     use({
       'mosheavni/search-replace.nvim',
@@ -48,41 +45,103 @@ PACKER.NVIM ~
     })
 <
 
-
-VIM-PLUG ~
-
+vim-plug:
 >vim
     Plug 'mosheavni/search-replace.nvim'
-    
+
     " In your init.lua or after/plugin:
     lua require('search-replace').setup()
 <
 
+==============================================================================
+Default Keymaps                                         *search-replace.keymaps*
 
-CONFIGURATION                                   *search-replace-configuration*
+Normal/Visual Mode:
+  `<leader>r` - Populate command line with search-replace using word under
+                cursor or visual selection
 
-Here’s the default configuration with all available options:
+Command-line Mode (during search-replace):
+  `<M-g>` - Toggle 'g' flag (global - replace all occurrences on each line)
+  `<M-c>` - Toggle 'c' flag (confirm - ask before each replacement)
+  `<M-i>` - Toggle 'i' flag (case-insensitive search)
+  `<M-d>` - Toggle replace term (clear or restore to original word)
+  `<M-5>` - Cycle range (%s -> .,$s -> 0,.s -> %s)
+  `<M-/>` - Cycle separator (/ -> ? -> # -> : -> @ -> /)
+  `<M-m>` - Cycle magic mode (\v -> \m -> \M -> \V -> none -> \v)
+  `<M-h>` - Toggle dashboard visibility
 
+Note: `<M-...>` means Alt/Meta key. On macOS, you may need to configure
+your terminal to send Meta key properly.
+
+==============================================================================
+Magic Modes                                               *search-replace.magic*
+
+Vim's magic modes control how special characters are interpreted in patterns:
+
+  `\v` - Very magic: Most characters have special meaning (like Perl regex)
+  `\m` - Magic: Standard regex (default Vim behavior)
+  `\M` - Nomagic: Only `^` and `$` are special
+  `\V` - Very nomagic: Only `\` is special (literal search)
+
+The plugin defaults to `\V` (very nomagic) for literal searching, which is
+often what you want when replacing exact text.
+
+==============================================================================
+Tips                                                       *search-replace.tips*
+
+For the best experience, enable Neovim's built-in incremental command preview:
+>lua
+    vim.o.inccommand = 'split'
+<
+
+This shows a live preview of your substitutions as you type, with matches
+highlighted in the buffer and a split window showing off-screen changes.
+
+SearchReplace                                *search-replace.tips.SearchReplace*
+
+    Fields: ~
+        {setup}                (fun(opts?:SearchReplaceConfig))   Setup the plugin with user configuration
+        {populate_searchline}  (fun(mode:string):string,integer)  Populate the search line
+        {toggle_char}          (fun(char:string):string)          Toggle a flag character
+        {toggle_replace_term}  (fun():string)                     Toggle the replace term
+        {toggle_all_file}      (fun():string)                     Toggle range (all file)
+        {toggle_separator}     (fun():string)                     Toggle separator
+        {toggle_magic}         (fun():string)                     Toggle magic mode
+        {is_active}            (fun():boolean)                    Check if search-replace mode is active
+        {get_config}           (fun():SearchReplaceConfig)        Get the current configuration
+
+
+M.setup({opts?})                                                       *M.setup*
+     Setup the plugin with user configuration
+
+    Parameters: ~
+        {opts?}  (table)  User configuration options
+
+
+==============================================================================
+Configuration                                            *search-replace.config*
+
+Full default configuration with all available options:
 >lua
     require('search-replace').setup({
       -- Keymaps configuration
       keymaps = {
         enable = true,
         populate = '<leader>r', -- Normal/Visual mode: populate search-replace
-        toggle_g = '<M-g>', -- Toggle global flag
-        toggle_c = '<M-c>', -- Toggle confirm flag
-        toggle_i = '<M-i>', -- Toggle case-insensitive flag
+        toggle_g = '<M-g>',     -- Toggle global flag
+        toggle_c = '<M-c>',     -- Toggle confirm flag
+        toggle_i = '<M-i>',     -- Toggle case-insensitive flag
         toggle_replace = '<M-d>', -- Toggle replace term (clear/restore)
-        toggle_range = '<M-5>', -- Cycle range (%s, .,$s, 0,.s)
+        toggle_range = '<M-5>',   -- Cycle range (%s, .,$s, 0,.s)
         toggle_separator = '<M-/>', -- Cycle separator (/, ?, #, :, @)
-        toggle_magic = '<M-m>', -- Cycle magic mode (\v, \m, \M, \V, none)
+        toggle_magic = '<M-m>',     -- Cycle magic mode (\v, \m, \M, \V, none)
         toggle_dashboard = '<M-h>', -- Toggle dashboard visibility
       },
       -- Dashboard configuration
       dashboard = {
         enable = true,
         symbols = {
-          active = '●', -- Active flag indicator
+          active = '●',   -- Active flag indicator
           inactive = '○', -- Inactive flag indicator
         },
         highlights = {
@@ -107,636 +166,6 @@ Here’s the default configuration with all available options:
     })
 <
 
-
-DEFAULT KEYMAPS                               *search-replace-default-keymaps*
-
-
-NORMAL/VISUAL MODE ~
-
-  --------------------------------------------------------------------------
-  Keymap      Description
-  ----------- --------------------------------------------------------------
-  <leader>r   Populate command line with search-replace using word under
-              cursor or visual selection
-
-  --------------------------------------------------------------------------
-
-COMMAND-LINE MODE (DURING SEARCH-REPLACE) ~
-
-  ------------------------------------------------------------------------
-  Keymap   Description
-  -------- ---------------------------------------------------------------
-  <M-g>    Toggle ‘g’ flag (global - replace all occurrences on each line)
-
-  <M-c>    Toggle ‘c’ flag (confirm - ask before each replacement)
-
-  <M-i>    Toggle ‘i’ flag (case-insensitive search)
-
-  <M-d>    Toggle replace term (clear or restore to original word)
-
-  <M-5>    Cycle range (%s -> .,$s -> 0,.s -> %s)
-
-  <M-/>    Cycle separator (/ -> ? -> # -> : -> @ -> /)
-
-  <M-m>    Cycle magic mode (> -> -> -> none ->
-
-  <M-h>    Toggle dashboard visibility
-  ------------------------------------------------------------------------
-Note: `<M-...>` means Alt/Meta key. On macOS, you may need to configure your
-terminal to send Meta key properly.
-
-
-API                                                       *search-replace-api*
-
-The plugin exports the following functions:
-
->lua
-    local sr = require('search-replace')
-    
-    -- Core functions
-    sr.populate_searchline(mode) -- 'n' for normal, 'v' for visual
-    sr.toggle_char(char) -- Toggle a flag ('g', 'c', or 'i')
-    sr.toggle_replace_term() -- Toggle replace term
-    sr.toggle_all_file() -- Cycle range
-    sr.toggle_separator() -- Cycle separator
-    sr.toggle_magic() -- Cycle magic mode
-    sr.is_active() -- Check if search-replace mode is active
-    sr.get_config() -- Get current configuration
-<
-
-
-MAGIC MODES                                       *search-replace-magic-modes*
-
-Vim’s magic modes control how special characters are interpreted in patterns:
-
-  Mode   Description
-  ------ --------------------------------------------------
-  \v     Very magic: Most characters have special meaning
-  \m     Magic: Standard regex (default Vim behavior)
-  \M     Nomagic: Only ^ and $ are special
-  \V     Very nomagic: Only \ is special (literal search)
-The plugin defaults to `\V` (very nomagic) for literal searching.
-
-
-TIPS                                                     *search-replace-tips*
-
-For the best experience, enable Neovim’s built-in incremental command
-preview:
-
->lua
-    vim.o.inccommand = 'split' -- Incremental search and replace with small split window
-<
-
-This shows a live preview of your substitutions as you type, with matches
-highlighted in the buffer and a split window showing off-screen changes.
-
-
-LICENSE                                               *search-replace-license*
-
-MIT
-
-==============================================================================
-2. Links                                                *search-replace-links*
-
-1. *Lint*: https://github.com/mosheavni/search-replace.nvim/actions/workflows/lint.yml/badge.svg
-2. *Tests*: https://github.com/mosheavni/search-replace.nvim/actions/workflows/test.yml/badge.svg
-3. *demo*: https://github.com/user-attachments/assets/f5f3a567-76b7-4073-8321-635a7d4851e8
-
-Generated by panvimdoc <https://github.com/kdheepak/panvimdoc>
-
-vim:tw=78:ts=8:noet:ft=help:norl:
-
-==============================================================================
-search-replace.nvim is a Neovim plugin for enhanced search and replace with
-a floating dashboard.
-
-Features:
-- Quick keymaps to populate substitute commands with word under cursor
-- Toggle flags (g/c/i) during command-line editing
-- Cycle through ranges, separators, and magic modes
-- Live dashboard showing current state during editing
-
-Usage:
-<pre>
-require('search-replace').setup({
-  keymaps = {
-    enable = true,
-    populate = '<leader>r',
-  },
-  dashboard = {
-    enable = true,
-  },
-})
-</pre>
-
-                                                           *search-replace.nvim*
-SearchReplace                                                  *M.SearchReplace*
-
-    Fields: ~
-        {setup}                (fun(opts?:SearchReplaceConfig))   Setup the plugin with user configuration
-        {populate_searchline}  (fun(mode:string):string,integer)  Populate the search line
-        {toggle_char}          (fun(char:string):string)          Toggle a flag character
-        {toggle_replace_term}  (fun():string)                     Toggle the replace term
-        {toggle_all_file}      (fun():string)                     Toggle range (all file)
-        {toggle_separator}     (fun():string)                     Toggle separator
-        {toggle_magic}         (fun():string)                     Toggle magic mode
-        {is_active}            (fun():boolean)                    Check if search-replace mode is active
-        {get_config}           (fun():SearchReplaceConfig)        Get the current configuration
-
-
-M.setup({opts?})                                                       *M.setup*
-     Setup the plugin with user configuration
-
-    Parameters: ~
-        {opts?}  (table)  User configuration options
-
-
-M.populate_searchline                                    *M.populate_searchline*
-
-    Type: ~
-        (fun(mode:string):string,integer)
-
-
-M.toggle_char                                                    *M.toggle_char*
-
-    Type: ~
-        (fun(char:string):string)
-
-
-M.toggle_replace_term                                    *M.toggle_replace_term*
-
-    Type: ~
-        (fun():string)
-
-
-M.toggle_all_file                                            *M.toggle_all_file*
-
-    Type: ~
-        (fun():string)
-
-
-M.toggle_separator                                          *M.toggle_separator*
-
-    Type: ~
-        (fun():string)
-
-
-M.toggle_magic                                                  *M.toggle_magic*
-
-    Type: ~
-        (fun():string)
-
-
-M.is_active                                                        *M.is_active*
-
-    Type: ~
-        (fun():boolean)
-
-
-M.get_config()                                                    *M.get_config*
-    Get the current configuration
-
-    Returns: ~
-        (SearchReplaceConfig)  The current configuration
-
-
-Core business logic for search-replace.nvim.
-
-This module manages the search-replace state and provides toggle functions
-that manipulate the command line during substitute command editing.
-
-Key concepts:
-- `sar_state` tracks the active session, current word, separator, and magic mode
-- Toggle functions return keystroke sequences using the `<C-\>e` expression pattern
-- All toggle functions use `set_cmd_and_pos()` to update command and cursor atomically
-- `should_sar()` detects if the current cmdline is a substitute command
-
-The `<C-\>e` pattern allows replacing the entire command line via expression
-evaluation, which is necessary because direct command line manipulation is
-not possible in cmdline mode.
-
-                                                           *search-replace.core*
-SearchReplaceCore                                          *M.SearchReplaceCore*
-
-    Fields: ~
-        {setup}                (fun(opts?:CoreConfig))            Setup the core module with configuration
-        {is_active}            (fun():boolean)                    Check if search-replace mode is active
-        {set_cmd_and_pos}      (fun():string)                     Set command and cursor position (called from C-\ e expression)
-        {populate_searchline}  (fun(mode:string):string,integer)  Populate the search line
-        {toggle_char}          (fun(char:string):string)          Toggle a flag character
-        {toggle_replace_term}  (fun():string)                     Toggle the replace term
-        {toggle_all_file}      (fun():string)                     Toggle range (all file)
-        {toggle_separator}     (fun():string)                     Toggle separator
-        {toggle_magic}         (fun():string)                     Toggle magic mode
-
-
-CoreConfig                                                        *M.CoreConfig*
-
-    Fields: ~
-        {separators}     (string[])  Available separator characters
-        {magic_modes}    (string[])  Available magic modes
-        {flags}          (string[])  Available flags
-        {default_range}  (string)    Default range for substitute command
-        {default_flags}  (string)    Default flags for substitute command
-        {default_magic}  (string)    Default magic mode
-
-
-SarState                                                            *M.SarState*
-
-    Fields: ~
-        {active}      (boolean)  Whether search-replace mode is active
-        {cword}       (string)   The current word or visual selection
-        {sep}         (string)   The current separator character
-        {magic}       (string)   The current magic mode
-        {new_cmd}     (string)   The new command (used by set_cmd_and_pos)
-        {cursor_pos}  (integer)  The cursor position (used by set_cmd_and_pos)
-
-
-M.is_active()                                                      *M.is_active*
-    Check if search-replace mode is active
-
-    Returns: ~
-        (boolean)  Whether search-replace mode is active
-
-
-M.set_cmd_and_pos()                                          *M.set_cmd_and_pos*
-    Set command and cursor position (called from C-\ e expression)
-    This function is called via luaeval from the keymap expressions
-
-    Returns: ~
-        (string)  The new command line content
-
-
-M.populate_searchline({mode})                            *M.populate_searchline*
-    Populate the search line with the current word or visual selection
-
-    Parameters: ~
-        {mode}  (string)  The mode ('n' for normal, 'v' for visual)
-
-    Returns: ~
-        (string)   The substitute command
-        (integer)  Number of characters to move cursor left
-
-
-M.toggle_char({char})                                            *M.toggle_char*
-    Toggle a flag character (g, c, i) in the substitute command
-
-    Parameters: ~
-        {char}  (string)  The flag character to toggle
-
-    Returns: ~
-        (string)  The keystrokes to execute (uses <C-\>e pattern)
-
-
-M.toggle_replace_term()                                  *M.toggle_replace_term*
-    Toggle the replace term (clear/restore original word)
-
-    Returns: ~
-        (string)  The keystrokes to execute (uses <C-\>e pattern)
-
-
-M.toggle_all_file()                                          *M.toggle_all_file*
-    Toggle the range (cycle through %s -> .,$s -> 0,.s -> %s)
-
-    Returns: ~
-        (string)  The keystrokes to execute (uses <C-\>e pattern)
-
-
-M.toggle_separator()                                        *M.toggle_separator*
-    Toggle the separator character (cycle through configured separators)
-
-    Returns: ~
-        (string)  The keystrokes to execute (uses <C-\>e pattern)
-
-
-M.toggle_magic()                                                *M.toggle_magic*
-    Toggle the magic mode (cycle through configured magic modes)
-
-    Returns: ~
-        (string)  The keystrokes to execute (uses <C-\>e pattern)
-
-
-M.setup({opts})                                                        *M.setup*
-    Setup the core module with configuration
-
-    Parameters: ~
-        {opts}  (CoreConfig)  Configuration options (required, provided by init.lua)
-
-    Returns: ~
-        (nil)
-
-
-Shared utilities for search-replace.nvim.
-
-This module provides common functions used across the plugin:
-- Pattern constants for substitute command detection
-- `parse_substitute_cmd()` - Parses `:s` commands into components
-- `split_by_separator()` - Splits strings while respecting escaped separators
-- `trigger_cmdline_refresh()` - Forces cmdline refresh via fake keystroke
-- `normalize_parts()` - Ensures command parts array has 4 elements
-- `get_visual_selection()` - Retrieves visual selection text
-
-The fake keystroke technique (space + backspace) is used because direct
-redraws don't work properly in command-line mode.
-
-                                                          *search-replace.utils*
-SearchReplaceUtils                                        *M.SearchReplaceUtils*
-
-    Fields: ~
-        {SUBSTITUTE_PATTERN}       (string)                                   Pattern to match substitute commands
-        {MAGIC_PATTERN}            (string)                                   Pattern to match magic mode prefixes
-        {is_substitute_cmd}        (fun(cmd:string):boolean)                  Check if a command looks like a substitute command
-        {split_by_separator}       (fun(str:string,sep:string):string[])      Split string by separator, respecting escapes
-        {parse_substitute_cmd}     (fun(cmd:string):ParsedSubstituteCmd|nil)  Parse a substitute command into components
-        {trigger_cmdline_refresh}  (fun(invalidate_fn?:function))             Trigger a cmdline refresh via fake keystroke
-        {normalize_parts}          (fun(parts:string[]):string[])             Normalize command parts to always have 4 elements
-        {get_visual_selection}     (fun():string)                             Get the visual selection and exit visual mode
-
-
-M.SUBSTITUTE_PATTERN                                      *M.SUBSTITUTE_PATTERN*
-
-    Type: ~
-        (string)
-
-
-M.MAGIC_PATTERN                                                *M.MAGIC_PATTERN*
-
-    Type: ~
-        (string)
-
-
-ParsedSubstituteCmd                                      *M.ParsedSubstituteCmd*
-
-    Fields: ~
-        {sep}      (string)  The separator character
-        {range}    (string)  The range part (e.g., ".,$s", "%s")
-        {magic}    (string)  The magic mode (e.g., "\\V", "\\v")
-        {search}   (string)  The search term
-        {replace}  (string)  The replace term
-        {flags}    (string)  Flags (e.g., "gc", "gi")
-
-
-M.is_substitute_cmd({cmd})                                 *M.is_substitute_cmd*
-    Check if a command looks like a substitute command
-
-    Parameters: ~
-        {cmd}  (string)  The command to check
-
-    Returns: ~
-        (boolean)
-
-
-M.split_by_separator({str}, {sep})                        *M.split_by_separator*
-    Split string by separator, respecting escapes
-
-    Parameters: ~
-        {str}  (string)  The string to split
-        {sep}  (string)  The separator character
-
-    Returns: ~
-        (string[])  The split parts
-
-
-M.parse_substitute_cmd({cmd})                           *M.parse_substitute_cmd*
-    Parse a substitute command into components
-
-    Parameters: ~
-        {cmd}  (string)  The command line content
-
-    Returns: ~
-        (ParsedSubstituteCmd|nil)  The parsed components, or nil if not valid
-
-
-                                                     *M.trigger_cmdline_refresh*
-M.trigger_cmdline_refresh({invalidate_fn?})
-    Trigger a cmdline refresh via fake keystroke
-    This is needed because direct refresh calls don't work properly in cmdline mode
-
-    Parameters: ~
-        {invalidate_fn?}  (fun())  Optional function to call before triggering (e.g., cache invalidation)
-
-    Returns: ~
-        (nil)
-
-
-M.normalize_parts({parts})                                   *M.normalize_parts*
-    Normalize command parts to always have 4 elements: range, search, replace, flags
-    Fills in missing parts with sensible defaults
-
-    Parameters: ~
-        {parts}  (string[])  The parts to normalize
-
-    Returns: ~
-        (string[])  The normalized parts (always 4 elements)
-
-
-M.get_visual_selection()                                *M.get_visual_selection*
-    Get the visual selection and exit visual mode
-
-    Returns: ~
-        (string)  The selected text
-
-
-Generic floating window module for search-replace.nvim.
-
-Provides a reusable floating window implementation inspired by mini.notify
-architecture. Key features:
-- Buffer/window caching for efficient updates
-- Proper event handling with `vim.schedule()` for fast event context
-- Immediate display via forced `vim.cmd('redraw')`
-- Supports custom content, configuration, and highlight functions
-
-Usage:
-<pre>
-local Float = require('search-replace.float')
-local float = Float.new()
-
-float.refresh(
-  function() return { 'Line 1', 'Line 2' } end,  -- content
-  function(buf_id) return { relative = 'editor', ... } end,  -- config
-  function() return { wrap = false } end,  -- window options
-  function(buf_id, lines) --[[ apply highlights ]] end  -- highlights
-)
-</pre>
-
-                                                          *search-replace.float*
-Float                                                                  *M.Float*
-
-    Fields: ~
-        {new}  (fun():FloatInstance)  Create a new float instance
-
-
-FloatInstance                                                  *M.FloatInstance*
-
-    Fields: ~
-        {cache}                      (FloatCache)
-        {refresh}                    (fun(content_fn:ContentFunction,config_fn:ConfigFunction,opts_fn?:OptsFunction,highlights_fn?:HighlightsFunction))
-        {close}                      (fun())
-        {is_shown}                   (fun():boolean)
-        {toggle}                     (fun(content_fn:ContentFunction,config_fn:ConfigFunction,opts_fn?:OptsFunction,highlights_fn?:HighlightsFunction))
-        {buffer_default_dimensions}  (fun(buf_id:integer,max_width_share:number):integer,integer)
-        {fit_to_width}               (fun(text:string,width:number):string)
-        {set_buf_name}               (fun(buf_id:integer,name:string))
-
-
-FloatCache                                                        *M.FloatCache*
-
-    Fields: ~
-        {buf_id}  (integer)
-
-
-ContentFunction                                              *M.ContentFunction*
-
-    Type: ~
-        fun():string[]
-
-
-ConfigFunction                                                *M.ConfigFunction*
-
-    Type: ~
-        fun(buf_id:integer):vim.api.keyset.win_config
-
-
-OptsFunction                                                    *M.OptsFunction*
-
-    Type: ~
-        fun():table<string,any>
-
-
-HighlightsFunction                                        *M.HighlightsFunction*
-
-    Type: ~
-        fun(buf_id:integer,lines:string[])
-
-
-M.new()                                                                  *M.new*
-     Create a new float instance
-
-    Returns: ~
-        (FloatInstance)
-
-
-Dashboard UI for search-replace.nvim.
-
-Displays a floating window showing the current state of the substitute
-command during command-line editing. The dashboard auto-detects substitute
-commands and updates in real-time as you type.
-
-Features:
-- Parses substitute commands and displays range, magic mode, flags
-- Shows search and replace terms with magic prefix stripped
-- Displays keymap hints with active/inactive indicators
-- Uses syntax highlighting via extmarks
-- Respects user's manual toggle (hidden state)
-
-The dashboard uses `CmdlineChanged` autocmd to detect and refresh for any
-substitute command, not just those started via the plugin keymaps.
-
-                                                      *search-replace.dashboard*
-SearchReplaceDashboard                                *M.SearchReplaceDashboard*
-
-    Fields: ~
-        {invalidate_cache}   (fun())                            Invalidate the dashboard cache
-        {refresh_dashboard}  (fun(cmdline?:string))             Refresh the dashboard with current cmdline state
-        {close_dashboard}    (fun())                            Close the dashboard
-        {toggle_dashboard}   (fun())                            Toggle the dashboard visibility
-        {setup}              (fun(opts?:DashboardSetupConfig))  Setup autocmds for the dashboard
-
-
-DashboardState                                                *M.DashboardState*
-
-    Fields: ~
-        {float}  (FloatInstance)
-
-
-RefreshState                                                    *M.RefreshState*
-
-    Fields: ~
-        {last_fake_keystroke_time}  (integer)  Timestamp of last fake keystroke
-
-
-DashboardSymbols                                            *M.DashboardSymbols*
-
-    Fields: ~
-        {active}    (string)  Symbol for active flag indicator
-        {inactive}  (string)  Symbol for inactive flag indicator
-
-
-DashboardHighlights                                      *M.DashboardHighlights*
-
-    Fields: ~
-        {title}               (string)  Highlight group for title
-        {key}                 (string)  Highlight group for key
-        {arrow}               (string)  Highlight group for arrow
-        {active_desc}         (string)  Highlight group for active description
-        {inactive_desc}       (string)  Highlight group for inactive description
-        {active_indicator}    (string)  Highlight group for active indicator
-        {inactive_indicator}  (string)  Highlight group for inactive indicator
-        {status_label}        (string)  Highlight group for status label
-        {status_value}        (string)  Highlight group for status value
-
-
-KeymapInfo                                                        *M.KeymapInfo*
-
-    Fields: ~
-        {key}   (string)  The keymap key combination
-        {flag}  (string)
-
-
-DashboardSetupConfig                                    *M.DashboardSetupConfig*
-
-    Fields: ~
-        {symbols}     (DashboardSymbols)     Visual symbols configuration
-        {highlights}  (DashboardHighlights)  Highlight groups configuration
-        {keymaps}     (KeymapInfo[])         Keymap information
-
-
-ParsedCommand                                                  *M.ParsedCommand*
-
-    Fields: ~
-        {range}      (string)                 The range part (e.g., ".,$s", "%s")
-        {separator}  (string)                 The separator character
-        {magic}      (string)                 The magic mode (e.g., "\\V", "\\v")
-        {search}     (string)                 The search term
-        {replace}    (string)                 The replace term
-        {flags}      (table<string,boolean>)  Flags as {g=true, c=true, i=false}
-        {raw}        (string)                 The original command
-
-
-M.invalidate_cache()                                        *M.invalidate_cache*
-    Invalidate the dashboard cache to force next refresh
-
-
-M.refresh_dashboard({cmdline?})                            *M.refresh_dashboard*
-    Refresh the dashboard with current cmdline state
-
-    Parameters: ~
-        {cmdline?}  (string)  Optional cmdline to parse (if not provided, reads current)
-
-
-M.close_dashboard()                                          *M.close_dashboard*
-    Close the dashboard
-
-
-M.toggle_dashboard()                                        *M.toggle_dashboard*
-    Toggle the dashboard visibility
-
-
-M.setup({opts})                                                        *M.setup*
-    Setup autocmds for the dashboard
-
-    Parameters: ~
-        {opts}  (DashboardSetupConfig)  Configuration options (required, provided by init.lua)
-
-    Returns: ~
-        (nil)
-
-
-Centralized configuration for search-replace.nvim.
-
-All default values and type definitions live here. This module provides
-a single source of truth for configuration across all other modules.
-
 Configuration structure:
 - `keymaps` - Keymap bindings for normal, visual, and command-line modes
 - `dashboard` - Dashboard appearance settings (symbols, highlights)
@@ -745,8 +174,8 @@ Configuration structure:
 - `flags` - Available substitute flags (g, c, i)
 - `default_*` - Default values for new substitute commands
 
-                                                         *search-replace.config*
-SearchReplaceKeymapConfig                          *M.SearchReplaceKeymapConfig*
+                               *search-replace.config.SearchReplaceKeymapConfig*
+SearchReplaceKeymapConfig
 
     Fields: ~
         {enable}             (boolean)  Whether to enable keymaps
@@ -761,14 +190,16 @@ SearchReplaceKeymapConfig                          *M.SearchReplaceKeymapConfig*
         {toggle_dashboard?}  (string)   Keymap to toggle dashboard
 
 
-SearchReplaceDashboardSymbols                  *M.SearchReplaceDashboardSymbols*
+                           *search-replace.config.SearchReplaceDashboardSymbols*
+SearchReplaceDashboardSymbols
 
     Fields: ~
         {active}    (string)  Symbol for active flag indicator
         {inactive}  (string)  Symbol for inactive flag indicator
 
 
-SearchReplaceDashboardHighlights            *M.SearchReplaceDashboardHighlights*
+                        *search-replace.config.SearchReplaceDashboardHighlights*
+SearchReplaceDashboardHighlights
 
     Fields: ~
         {title}               (string)  Highlight group for title
@@ -782,7 +213,8 @@ SearchReplaceDashboardHighlights            *M.SearchReplaceDashboardHighlights*
         {status_value}        (string)  Highlight group for status value
 
 
-SearchReplaceDashboardConfig                    *M.SearchReplaceDashboardConfig*
+                            *search-replace.config.SearchReplaceDashboardConfig*
+SearchReplaceDashboardConfig
 
     Fields: ~
         {enable}      (boolean)                           Whether to enable the dashboard
@@ -790,7 +222,8 @@ SearchReplaceDashboardConfig                    *M.SearchReplaceDashboardConfig*
         {highlights}  (SearchReplaceDashboardHighlights)  Highlight groups configuration
 
 
-SearchReplaceConfig                                      *M.SearchReplaceConfig*
+                                     *search-replace.config.SearchReplaceConfig*
+SearchReplaceConfig
 
     Fields: ~
         {keymaps}        (SearchReplaceKeymapConfig)     Keymaps configuration
@@ -803,39 +236,54 @@ SearchReplaceConfig                                      *M.SearchReplaceConfig*
         {default_magic}  (string)                        Default magic mode
 
 
-ConfigModule                                                    *M.ConfigModule*
+==============================================================================
+API                                                         *search-replace.api*
 
-    Fields: ~
-        {defaults}  (SearchReplaceConfig)        The default configuration
-        {current}   (SearchReplaceConfig)        The current merged configuration
-        {setup}     (fun(opts?:table))           Merge user options with defaults
-        {get}       (fun():SearchReplaceConfig)  Get the current configuration
+The plugin exports the following functions via `require('search-replace')`:
+
+>lua
+    local sr = require('search-replace')
+
+    -- Core functions
+    sr.populate_searchline(mode) -- 'n' for normal, 'v' for visual
+    sr.toggle_char(char)         -- Toggle a flag ('g', 'c', or 'i')
+    sr.toggle_replace_term()     -- Toggle replace term
+    sr.toggle_all_file()         -- Cycle range
+    sr.toggle_separator()        -- Cycle separator
+    sr.toggle_magic()            -- Cycle magic mode
+    sr.is_active()               -- Check if search-replace mode is active
+    sr.get_config()              -- Get current configuration
+<
+
+Implementation details:
+- Toggle functions return keystroke sequences using the `<C-\>e` expression
+  pattern, which allows replacing the entire command line via expression
+  evaluation
+- All toggle functions use `set_cmd_and_pos()` to update command and cursor
+  atomically
+
+M.is_active()                                                      *M.is_active*
 
 
-M.defaults                                                          *M.defaults*
-
-    Type: ~
-        (SearchReplaceConfig)
+M.set_cmd_and_pos()                                          *M.set_cmd_and_pos*
 
 
-M.current                                                            *M.current*
-
-    Type: ~
-        (SearchReplaceConfig)
+M.populate_searchline()                                  *M.populate_searchline*
 
 
-M.setup({opts?})                                                       *M.setup*
-    Setup configuration by merging user options with defaults
-
-    Parameters: ~
-        {opts?}  (table)  User configuration options
+M.toggle_char()                                                  *M.toggle_char*
 
 
-M.get()                                                                  *M.get*
-    Get the current configuration
+M.toggle_replace_term()                                  *M.toggle_replace_term*
 
-    Returns: ~
-        (SearchReplaceConfig)
+
+M.toggle_all_file()                                          *M.toggle_all_file*
+
+
+M.toggle_separator()                                        *M.toggle_separator*
+
+
+M.toggle_magic()                                                *M.toggle_magic*
 
 
 vim:tw=78:ts=8:noet:ft=help:norl:

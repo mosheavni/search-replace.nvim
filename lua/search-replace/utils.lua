@@ -128,7 +128,16 @@ function M.trigger_cmdline_refresh(invalidate_fn)
     if invalidate_fn then
       invalidate_fn()
     end
-    vim.fn.feedkeys(' ' .. vim.keycode('<BS>'), 'in')
+    -- Save cursor position before triggering refresh
+    local pos = vim.fn.getcmdpos()
+    local cmd_len = #vim.fn.getcmdline()
+    -- Calculate how many <Left> keys needed to restore position after going to end
+    local chars_to_move_left = cmd_len - pos + 1
+
+    -- Go to end (to avoid inserting space in middle), insert space, delete it,
+    -- then move back to original position
+    local restore_keys = string.rep(vim.keycode('<Left>'), chars_to_move_left)
+    vim.fn.feedkeys(vim.keycode('<End>') .. ' ' .. vim.keycode('<BS>') .. restore_keys, 'in')
   end, 50)
 end
 

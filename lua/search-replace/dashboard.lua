@@ -28,19 +28,30 @@
 ---@field setup fun() Setup autocmds for the dashboard
 local M = {}
 
-local Float = require('search-replace.float')
 local utils = require('search-replace.utils')
-local config_module = require('search-replace.config')
+
+---Get config from init.lua (lazy-loaded to avoid circular dependency)
+---@return SearchReplaceConfig
+local function get_config()
+  return require('search-replace').get_config()
+end
+
+-- Float state (inlined from float.lua)
+---@class FloatState
+---@field buf_id integer? Buffer ID (nil if not created)
+---@field win_id integer? Window ID (nil if not created)
+local float_state = {
+  buf_id = nil,
+  win_id = nil,
+}
 
 ---@class DashboardState
----@field float FloatInstance? Float instance (nil if not created)
----@field ns_id integer? Namespace for highlights (nil if not created)
+---@field ns_id integer? Namespace ID for highlights
 ---@field last_parsed ParsedCommand? Cache of last parsed command
 ---@field hidden boolean Track if user manually hid the dashboard
 
 ---@type DashboardState
 local dashboard_state = {
-  float = nil,
   ns_id = nil,
   last_parsed = nil,
   hidden = false,
@@ -53,6 +64,60 @@ local dashboard_state = {
 local refresh_state = {
   last_fake_keystroke_time = 0,
 }
+
+-- Float helpers (inlined from float.lua)
+
+---Check if buffer is valid
+---@param buf_id integer?
+---@return boolean
+local function is_valid_buf(buf_id)
+  return buf_id ~= nil and vim.api.nvim_buf_is_valid(buf_id)
+end
+
+---Check if window is valid
+---@param win_id integer?
+---@return boolean
+local function is_valid_win(win_id)
+  return win_id ~= nil and vim.api.nvim_win_is_valid(win_id)
+end
+
+---Check if window is in current tabpage
+---@param win_id integer
+---@return boolean
+local function is_win_in_tabpage(win_id)
+  return vim.api.nvim_win_get_tabpage(win_id) == vim.api.nvim_get_current_tabpage()
+end
+
+---Create a new buffer for the float
+---@return integer buf_id The created buffer ID
+local function buffer_create()
+  local buf_id = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = buf_id })
+  return buf_id
+end
+
+---Refresh buffer content with new lines
+---@param buf_id integer Buffer ID to refresh
+---@param lines string[] Lines to set in buffer
+local function buffer_refresh(buf_id, lines)
+  vim.api.nvim_set_option_value('modifiable', true, { buf = buf_id })
+  vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
+  vim.api.nvim_set_option_value('modifiable', false, { buf = buf_id })
+end
+
+---Close the floating window
+local function window_close()
+  if is_valid_win(float_state.win_id) then
+    vim.api.nvim_win_close(float_state.win_id, true)
+    float_state.win_id = nil
+  end
+end
+
+---Check if the floating window is currently shown
+---@return boolean
+local function float_is_shown()
+  return is_valid_win(float_state.win_id) and is_win_in_tabpage(float_state.win_id)
+end
 
 ---Trigger a dashboard refresh via fake keystroke
 ---@return nil
@@ -68,7 +133,7 @@ end
 ---Build keymap info array from config
 ---@return KeymapInfo[]
 local function get_keymaps_info()
-  local cfg = config_module.get()
+  local cfg = get_config()
   return {
     { key = cfg.keymaps.toggle_g or '<M-g>', flag = 'g', desc = "Toggle 'g' flag (global)" },
     { key = cfg.keymaps.toggle_c or '<M-c>', flag = 'c', desc = "Toggle 'c' flag (confirm)" },
@@ -238,7 +303,7 @@ end
 ---@param parsed ParsedCommand The parsed command
 ---@return string[] keymap_lines The formatted keymap lines
 local function format_keymap_lines(parsed)
-  local cfg = config_module.get()
+  local cfg = get_config()
   local keymaps = get_keymaps_info()
   local lines = {}
 
@@ -260,177 +325,113 @@ local function format_keymap_lines(parsed)
   return lines
 end
 
+---@class HighlightRule
+---@field line integer Buffer line index (0-based)
+---@field label string Label text to find
+---@field label_hl string Highlight group for label
+---@field value_hl string Highlight group for value
+
+---Apply a label+value highlight to a line
+---@param buf_id integer Buffer ID
+---@param ns_id integer Namespace ID
+---@param line_idx integer Line index (0-based)
+---@param line string Line content
+---@param label string Label to find
+---@param label_hl string Highlight group for label
+---@param value_hl string Highlight group for value
+local function highlight_label_value(buf_id, ns_id, line_idx, line, label, label_hl, value_hl)
+  local label_pos = line:find(label, 1, true)
+  if label_pos then
+    vim.api.nvim_buf_set_extmark(buf_id, ns_id, line_idx, label_pos - 1, {
+      end_col = label_pos + #label - 1,
+      hl_group = label_hl,
+    })
+    local value_start = label_pos + #label
+    vim.api.nvim_buf_set_extmark(buf_id, ns_id, line_idx, value_start, {
+      end_col = #line,
+      hl_group = value_hl,
+    })
+  end
+end
+
+---Apply arrow and description highlight to a line
+---@param buf_id integer Buffer ID
+---@param ns_id integer Namespace ID
+---@param line_idx integer Line index (0-based)
+---@param line string Line content
+---@param arrow_hl string Highlight group for arrow
+---@param desc_hl string Highlight group for description
+local function highlight_arrow_desc(buf_id, ns_id, line_idx, line, arrow_hl, desc_hl)
+  local arrow_pos = line:find('->', 1, true)
+  if arrow_pos then
+    vim.api.nvim_buf_set_extmark(buf_id, ns_id, line_idx, arrow_pos - 1, {
+      end_col = arrow_pos + 1,
+      hl_group = arrow_hl,
+    })
+    vim.api.nvim_buf_set_extmark(buf_id, ns_id, line_idx, arrow_pos + 2, {
+      end_col = #line,
+      hl_group = desc_hl,
+    })
+  end
+end
+
 ---Apply highlights to the dashboard buffer
 ---@param buf_id number The buffer ID
 ---@param lines string[] The buffer lines
 ---@param parsed ParsedCommand The parsed command
 local function apply_highlights(buf_id, lines, parsed)
-  local cfg = config_module.get()
-  local highlights = cfg.dashboard.highlights
+  local cfg = get_config()
+  local hl = cfg.dashboard.highlights
   local keymaps = get_keymaps_info()
 
   if not dashboard_state.ns_id then
     dashboard_state.ns_id = vim.api.nvim_create_namespace('SearchReplaceDashboard')
   end
+  local ns_id = dashboard_state.ns_id
 
-  -- Clear existing highlights
-  vim.api.nvim_buf_clear_namespace(buf_id, dashboard_state.ns_id, 0, -1)
+  vim.api.nvim_buf_clear_namespace(buf_id, ns_id, 0, -1)
 
   -- Line 0: Title
-  local title_line = lines[1] -- First line in the lines array is line 0 in the buffer
-  vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 0, 0, {
-    end_col = #title_line,
-    hl_group = highlights.title,
+  vim.api.nvim_buf_set_extmark(buf_id, ns_id, 0, 0, {
+    end_col = #lines[1],
+    hl_group = hl.title,
   })
 
-  -- Line 1: Empty (separator)
+  -- Lines 2-3: Range (label + value, arrow + description)
+  highlight_label_value(buf_id, ns_id, 2, lines[3], 'Range:', hl.status_label, hl.status_value)
+  highlight_arrow_desc(buf_id, ns_id, 3, lines[4], hl.arrow, hl.inactive_desc)
 
-  -- Lines 2-3: Range display
-  local range_line = lines[3] -- Buffer line 2 is array index 3
-  local range_label = 'Range:'
-  local range_label_pos = range_line:find(range_label, 1, true)
-  if range_label_pos then
-    -- Highlight "Range:" label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 2, range_label_pos - 1, {
-      end_col = range_label_pos + #range_label - 1,
-      hl_group = highlights.status_label,
-    })
-    -- Highlight the range value
-    local value_start = range_label_pos + #range_label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 2, value_start, {
-      end_col = #range_line,
-      hl_group = highlights.status_value,
-    })
-  end
+  -- Lines 5-6: Magic (label + value, arrow + description)
+  highlight_label_value(buf_id, ns_id, 5, lines[6], 'Magic:', hl.status_label, hl.status_value)
+  highlight_arrow_desc(buf_id, ns_id, 6, lines[7], hl.arrow, hl.inactive_desc)
 
-  -- Highlight range description (line 3) with arrow and description
-  local range_desc_line = lines[4] -- Buffer line 3 is array index 4
-  local arrow_pos = range_desc_line:find('->', 1, true)
-  if arrow_pos then
-    -- Highlight arrow
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 3, arrow_pos - 1, {
-      end_col = arrow_pos + 1,
-      hl_group = highlights.arrow,
-    })
-    -- Highlight description text
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 3, arrow_pos + 2, {
-      end_col = #range_desc_line,
-      hl_group = highlights.inactive_desc,
-    })
-  end
-
-  -- Line 4: Empty (separator)
-
-  -- Lines 5-6: Magic display
-  local magic_line = lines[6] -- Buffer line 5 is array index 6
-  local magic_label = 'Magic:'
-  local magic_label_pos = magic_line:find(magic_label, 1, true)
-  if magic_label_pos then
-    -- Highlight "Magic:" label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 5, magic_label_pos - 1, {
-      end_col = magic_label_pos + #magic_label - 1,
-      hl_group = highlights.status_label,
-    })
-    -- Highlight the magic value
-    local value_start = magic_label_pos + #magic_label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 5, value_start, {
-      end_col = #magic_line,
-      hl_group = highlights.status_value,
-    })
-  end
-
-  -- Highlight magic description (line 6) with arrow and description
-  local magic_desc_line = lines[7] -- Buffer line 6 is array index 7
-  local magic_arrow_pos = magic_desc_line:find('->', 1, true)
-  if magic_arrow_pos then
-    -- Highlight arrow
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 6, magic_arrow_pos - 1, {
-      end_col = magic_arrow_pos + 1,
-      hl_group = highlights.arrow,
-    })
-    -- Highlight description text
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 6, magic_arrow_pos + 2, {
-      end_col = #magic_desc_line,
-      hl_group = highlights.inactive_desc,
-    })
-  end
-
-  -- Line 7: Empty (separator)
-
-  -- Line 8: Status line
-  local status_line = lines[9] -- Buffer line 8 is array index 9
-  local col = 0
-
-  -- Highlight each part of the status line
-  for label, hl in pairs({
-    ['Sep:'] = highlights.status_label,
-    ['Flags:'] = highlights.status_label,
-  }) do
-    local start_pos = status_line:find(label, col, true)
+  -- Line 8: Status line (Sep: and Flags:)
+  local status_line = lines[9]
+  for _, label in ipairs({ 'Sep:', 'Flags:' }) do
+    local start_pos = status_line:find(label, 1, true)
     if start_pos then
-      vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 8, start_pos - 1, {
+      vim.api.nvim_buf_set_extmark(buf_id, ns_id, 8, start_pos - 1, {
         end_col = start_pos + #label - 1,
-        hl_group = hl,
+        hl_group = hl.status_label,
       })
-
-      -- Highlight the value after the label
-      local value_start = start_pos + #label -- 1-based string index
+      local value_start = start_pos + #label
       local next_label_pos = status_line:find('%s%s[A-Z]', value_start)
-      local value_end = next_label_pos or #status_line + 1 -- 1-based exclusive end
-      -- Convert from 1-based string indices to 0-based buffer column indices
-      vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 8, value_start - 1, {
+      local value_end = next_label_pos or #status_line + 1
+      vim.api.nvim_buf_set_extmark(buf_id, ns_id, 8, value_start - 1, {
         end_col = value_end - 1,
-        hl_group = highlights.status_value,
+        hl_group = hl.status_value,
       })
-
-      col = value_end
     end
   end
 
-  -- Line 9: Empty (separator)
-
-  -- Lines 10-11: Search and Replace display
-  local search_line = lines[11] -- Buffer line 10 is array index 11
-  local search_label = 'Search:'
-  local search_label_pos = search_line:find(search_label, 1, true)
-  if search_label_pos then
-    -- Highlight "Search:" label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 10, search_label_pos - 1, {
-      end_col = search_label_pos + #search_label - 1,
-      hl_group = highlights.status_label,
-    })
-    -- Highlight the search value (everything after the label)
-    local value_start = search_label_pos + #search_label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 10, value_start, {
-      end_col = #search_line,
-      hl_group = highlights.status_value,
-    })
-  end
-
-  local replace_line = lines[12] -- Buffer line 11 is array index 12
-  local replace_label = 'Replace:'
-  local replace_label_pos = replace_line:find(replace_label, 1, true)
-  if replace_label_pos then
-    -- Highlight "Replace:" label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 11, replace_label_pos - 1, {
-      end_col = replace_label_pos + #replace_label - 1,
-      hl_group = highlights.status_label,
-    })
-    -- Highlight the replace value (everything after the label)
-    local value_start = replace_label_pos + #replace_label
-    vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 11, value_start, {
-      end_col = #replace_line,
-      hl_group = highlights.status_value,
-    })
-  end
-
-  -- Line 12: Empty (separator)
+  -- Lines 10-11: Search and Replace
+  highlight_label_value(buf_id, ns_id, 10, lines[11], 'Search:', hl.status_label, hl.status_value)
+  highlight_label_value(buf_id, ns_id, 11, lines[12], 'Replace:', hl.status_label, hl.status_value)
 
   -- Lines 13+: Keymap lines
   for i, km in ipairs(keymaps) do
     local line_idx = 13 + i - 1
     local line = lines[line_idx + 1]
-
     if not line then
       break
     end
@@ -438,8 +439,8 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight indicator symbol
     if km.flag then
       local is_active = parsed.flags[km.flag]
-      local indicator_hl = is_active and highlights.active_indicator or highlights.inactive_indicator
-      vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, 2, {
+      local indicator_hl = is_active and hl.active_indicator or hl.inactive_indicator
+      vim.api.nvim_buf_set_extmark(buf_id, ns_id, line_idx, 2, {
         end_col = 3,
         hl_group = indicator_hl,
       })
@@ -448,30 +449,21 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight keymap key
     local key_start = line:find(km.key, 1, true)
     if key_start then
-      vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, key_start - 1, {
+      vim.api.nvim_buf_set_extmark(buf_id, ns_id, line_idx, key_start - 1, {
         end_col = key_start + #km.key - 1,
-        hl_group = highlights.key,
+        hl_group = hl.key,
       })
     end
 
     -- Highlight arrow
-    local arrow_start = line:find('->', 1, true)
-    if arrow_start then
-      vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, arrow_start - 1, {
-        end_col = arrow_start + 1,
-        hl_group = highlights.arrow,
-      })
-    end
-
-    -- Highlight description
-    local desc_start = line:find(km.desc, 1, true)
-    if desc_start then
-      local desc_hl = (km.flag and parsed.flags[km.flag]) and highlights.active_desc or highlights.inactive_desc
-      vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, desc_start - 1, {
-        end_col = #line,
-        hl_group = desc_hl,
-      })
-    end
+    highlight_arrow_desc(
+      buf_id,
+      ns_id,
+      line_idx,
+      line,
+      hl.arrow,
+      (km.flag and parsed.flags[km.flag]) and hl.active_desc or hl.inactive_desc
+    )
   end
 end
 
@@ -519,8 +511,7 @@ end
 ---@param cmdline? string Optional cmdline to parse (if not provided, reads current)
 function M.refresh_dashboard(cmdline)
   -- CRITICAL: Guard for fast events (mini.notify pattern)
-  local in_fast = vim.in_fast_event()
-  if in_fast then
+  if vim.in_fast_event() then
     return vim.schedule(function()
       M.refresh_dashboard(cmdline)
     end)
@@ -576,31 +567,41 @@ function M.refresh_dashboard(cmdline)
     table.insert(lines, line)
   end
 
-  -- Create or update float
-  if not dashboard_state.float then
-    dashboard_state.float = Float.new()
+  -- Refresh buffer
+  local buf_id = float_state.buf_id
+  if not is_valid_buf(buf_id) then
+    buf_id = buffer_create()
+  end
+  buffer_refresh(buf_id, lines)
+
+  -- Apply highlights synchronously
+  apply_highlights(buf_id, lines, parsed)
+
+  -- Refresh window
+  local win_id = float_state.win_id
+  if not (is_valid_win(win_id) and is_win_in_tabpage(win_id)) then
+    window_close()
+    local win_config = compute_config(buf_id)
+    win_id = vim.api.nvim_open_win(buf_id, false, win_config)
+  else
+    local new_config = compute_config(buf_id)
+    vim.api.nvim_win_set_config(win_id, new_config)
   end
 
-  -- Refresh with synchronous highlights (mini.notify pattern)
-  dashboard_state.float.refresh(
-    function()
-      return lines
-    end,
-    function(buf_id)
-      return compute_config(buf_id)
-    end,
-    nil,
-    function(buf_id, buf_lines)
-      -- Apply highlights synchronously after buffer refresh
-      apply_highlights(buf_id, buf_lines, parsed)
-    end
-  )
+  -- CRUCIAL: Force redraw
+  vim.cmd('redraw')
+
+  -- Update cache
+  float_state.buf_id = buf_id
+  float_state.win_id = win_id
 end
 
 ---Close the dashboard
 function M.close_dashboard()
-  if dashboard_state.float then
-    dashboard_state.float.close()
+  window_close()
+  if is_valid_buf(float_state.buf_id) then
+    vim.api.nvim_buf_delete(float_state.buf_id, { force = true })
+    float_state.buf_id = nil
   end
   dashboard_state.last_parsed = nil
 end
@@ -648,8 +649,9 @@ function M.setup()
       local cmdline = vim.fn.getcmdline()
       -- Quick check: does it look like a substitute command?
       if not utils.is_substitute_cmd(cmdline) then
-        -- Not a substitute command, close dashboard if open
-        if dashboard_state.float and dashboard_state.float.is_shown() then
+        -- Not a substitute command - always clear cache and close dashboard if open
+        dashboard_state.last_parsed = nil
+        if float_is_shown() then
           M.close_dashboard()
         end
         return

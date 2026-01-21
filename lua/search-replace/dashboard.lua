@@ -30,12 +30,6 @@ local M = {}
 
 local utils = require('search-replace.utils')
 
----Get config from init.lua (lazy-loaded to avoid circular dependency)
----@return SearchReplaceConfig
-local function get_config()
-  return require('search-replace').get_config()
-end
-
 -- Float state (inlined from float.lua)
 ---@class FloatState
 ---@field buf_id integer? Buffer ID (nil if not created)
@@ -82,9 +76,12 @@ local function is_valid_win(win_id)
 end
 
 ---Check if window is in current tabpage
----@param win_id integer
+---@param win_id integer?
 ---@return boolean
 local function is_win_in_tabpage(win_id)
+  if not win_id then
+    return false
+  end
   return vim.api.nvim_win_get_tabpage(win_id) == vim.api.nvim_get_current_tabpage()
 end
 
@@ -113,18 +110,6 @@ local function window_close()
   end
 end
 
----Check if the floating window is currently shown
----@return boolean
-local function float_is_shown()
-  return is_valid_win(float_state.win_id) and is_win_in_tabpage(float_state.win_id)
-end
-
----Trigger a dashboard refresh via fake keystroke
----@return nil
-local function trigger_refresh()
-  utils.trigger_cmdline_refresh(M.invalidate_cache)
-end
-
 ---@class KeymapInfo
 ---@field key string The keymap key combination
 ---@field flag string? The flag this keymap toggles (nil for non-flag keymaps)
@@ -133,7 +118,7 @@ end
 ---Build keymap info array from config
 ---@return KeymapInfo[]
 local function get_keymaps_info()
-  local cfg = get_config()
+  local cfg = require('search-replace').get_config()
   return {
     { key = cfg.keymaps.toggle_g or '<M-g>', flag = 'g', desc = "Toggle 'g' flag (global)" },
     { key = cfg.keymaps.toggle_c or '<M-c>', flag = 'c', desc = "Toggle 'c' flag (confirm)" },
@@ -303,7 +288,7 @@ end
 ---@param parsed ParsedCommand The parsed command
 ---@return string[] keymap_lines The formatted keymap lines
 local function format_keymap_lines(parsed)
-  local cfg = get_config()
+  local cfg = require('search-replace').get_config()
   local keymaps = get_keymaps_info()
   local lines = {}
 
@@ -380,13 +365,14 @@ end
 ---@param lines string[] The buffer lines
 ---@param parsed ParsedCommand The parsed command
 local function apply_highlights(buf_id, lines, parsed)
-  local cfg = get_config()
+  local cfg = require('search-replace').get_config()
   local hl = cfg.dashboard.highlights
   local keymaps = get_keymaps_info()
 
   if not dashboard_state.ns_id then
     dashboard_state.ns_id = vim.api.nvim_create_namespace('SearchReplaceDashboard')
   end
+  ---@type integer
   local ns_id = dashboard_state.ns_id
 
   vim.api.nvim_buf_clear_namespace(buf_id, ns_id, 0, -1)
@@ -568,7 +554,8 @@ function M.refresh_dashboard(cmdline)
   end
 
   -- Refresh buffer
-  local buf_id = float_state.buf_id
+  ---@type integer
+  local buf_id = float_state.buf_id or buffer_create()
   if not is_valid_buf(buf_id) then
     buf_id = buffer_create()
   end
@@ -584,6 +571,7 @@ function M.refresh_dashboard(cmdline)
     local win_config = compute_config(buf_id)
     win_id = vim.api.nvim_open_win(buf_id, false, win_config)
   else
+    ---@cast win_id integer
     local new_config = compute_config(buf_id)
     vim.api.nvim_win_set_config(win_id, new_config)
   end
@@ -612,7 +600,7 @@ function M.toggle_dashboard()
   if dashboard_state.hidden then
     -- Currently hidden, show it
     dashboard_state.hidden = false
-    trigger_refresh()
+    utils.trigger_cmdline_refresh(M.invalidate_cache)
   else
     -- Currently shown (or would be shown), hide it
     dashboard_state.hidden = true
@@ -651,7 +639,7 @@ function M.setup()
       if not utils.is_substitute_cmd(cmdline) then
         -- Not a substitute command - always clear cache and close dashboard if open
         dashboard_state.last_parsed = nil
-        if float_is_shown() then
+        if is_valid_win(float_state.win_id) and is_win_in_tabpage(float_state.win_id) then
           M.close_dashboard()
         end
         return
@@ -666,7 +654,7 @@ function M.setup()
       else
         -- Trigger fake keystroke for proper refresh
         refresh_state.last_fake_keystroke_time = now
-        trigger_refresh()
+        utils.trigger_cmdline_refresh(M.invalidate_cache)
       end
     end,
   })

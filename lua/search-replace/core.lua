@@ -230,12 +230,8 @@ function M.toggle_magic()
   end)
 end
 
--- Internal setup function (not documented to avoid tag conflicts)
-local function setup(opts)
-  -- Config is provided by init.lua from centralized config.lua
+function M.setup(opts)
   config = opts
-
-  -- Autocommand to deactivate search-replace mode when leaving cmdline
   vim.api.nvim_create_autocmd('CmdlineLeave', {
     pattern = ':',
     callback = function()
@@ -243,7 +239,5 @@ local function setup(opts)
     end,
   })
 end
-
-M.setup = setup
 
 return M

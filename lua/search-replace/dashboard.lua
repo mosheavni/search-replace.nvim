@@ -649,7 +649,8 @@ function M.setup()
       local cmdline = vim.fn.getcmdline()
       -- Quick check: does it look like a substitute command?
       if not utils.is_substitute_cmd(cmdline) then
-        -- Not a substitute command, close dashboard if open
+        -- Not a substitute command - always clear cache and close dashboard if open
+        dashboard_state.last_parsed = nil
         if float_is_shown() then
           M.close_dashboard()
         end

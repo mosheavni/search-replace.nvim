@@ -1,8 +1,49 @@
+---@mod search-replace.config Configuration
 ---@brief [[
----Centralized configuration for search-replace.nvim.
----
----All default values and type definitions live here. This module provides
----a single source of truth for configuration across all other modules.
+---Full default configuration with all available options:
+--->lua
+---    require('search-replace').setup({
+---      -- Keymaps configuration
+---      keymaps = {
+---        enable = true,
+---        populate = '<leader>r', -- Normal/Visual mode: populate search-replace
+---        toggle_g = '<M-g>',     -- Toggle global flag
+---        toggle_c = '<M-c>',     -- Toggle confirm flag
+---        toggle_i = '<M-i>',     -- Toggle case-insensitive flag
+---        toggle_replace = '<M-d>', -- Toggle replace term (clear/restore)
+---        toggle_range = '<M-5>',   -- Cycle range (%s, .,$s, 0,.s)
+---        toggle_separator = '<M-/>', -- Cycle separator (/, ?, #, :, @)
+---        toggle_magic = '<M-m>',     -- Cycle magic mode (\v, \m, \M, \V, none)
+---        toggle_dashboard = '<M-h>', -- Toggle dashboard visibility
+---      },
+---      -- Dashboard configuration
+---      dashboard = {
+---        enable = true,
+---        symbols = {
+---          active = '●',   -- Active flag indicator
+---          inactive = '○', -- Inactive flag indicator
+---        },
+---        highlights = {
+---          title = 'Title',
+---          key = 'Special',
+---          arrow = 'Comment',
+---          active_desc = 'String',
+---          inactive_desc = 'Comment',
+---          active_indicator = 'DiagnosticOk',
+---          inactive_indicator = 'Comment',
+---          status_label = 'Comment',
+---          status_value = 'Constant',
+---        },
+---      },
+---      -- Core settings
+---      separators = { '/', '?', '#', ':', '@' },
+---      magic_modes = { '\\v', '\\m', '\\M', '\\V', '' },
+---      flags = { 'g', 'c', 'i' },
+---      default_range = '.,$s',
+---      default_flags = 'gc',
+---      default_magic = '\\V',
+---    })
+---<
 ---
 ---Configuration structure:
 ---- `keymaps` - Keymap bindings for normal, visual, and command-line modes
@@ -12,8 +53,6 @@
 ---- `flags` - Available substitute flags (g, c, i)
 ---- `default_*` - Default values for new substitute commands
 ---@brief ]]
-
----@tag search-replace.config
 
 ---@class SearchReplaceKeymapConfig
 ---@field enable boolean Whether to enable keymaps
@@ -57,14 +96,8 @@
 ---@field default_flags string Default flags for substitute command
 ---@field default_magic string Default magic mode
 
----@class ConfigModule
----@field defaults SearchReplaceConfig The default configuration
----@field current SearchReplaceConfig The current merged configuration
----@field setup fun(opts?: table) Merge user options with defaults
----@field get fun(): SearchReplaceConfig Get the current configuration
 local M = {}
 
----@type SearchReplaceConfig
 M.defaults = {
   -- Keymaps configuration
   keymaps = {
@@ -107,20 +140,19 @@ M.defaults = {
   default_magic = '\\V',
 }
 
----@type SearchReplaceConfig
 M.current = vim.deepcopy(M.defaults)
 
----Setup configuration by merging user options with defaults
----@param opts? table User configuration options
-function M.setup(opts)
+-- Internal functions (not documented to avoid tag conflicts)
+local function setup(opts)
   opts = opts or {}
   M.current = vim.tbl_deep_extend('force', vim.deepcopy(M.defaults), opts)
 end
 
----Get the current configuration
----@return SearchReplaceConfig
-function M.get()
+local function get()
   return M.current
 end
+
+M.setup = setup
+M.get = get
 
 return M

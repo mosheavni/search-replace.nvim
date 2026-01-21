@@ -1,3 +1,6 @@
+---@toc search-replace.contents
+
+---@mod search-replace.nvim Introduction
 ---@brief [[
 ---search-replace.nvim is a Neovim plugin for enhanced search and replace with
 ---a floating dashboard.
@@ -7,22 +10,83 @@
 ---- Toggle flags (g/c/i) during command-line editing
 ---- Cycle through ranges, separators, and magic modes
 ---- Live dashboard showing current state during editing
----
----Usage:
----<pre>
----require('search-replace').setup({
----  keymaps = {
----    enable = true,
----    populate = '<leader>r',
----  },
----  dashboard = {
----    enable = true,
----  },
----})
----</pre>
+---- Auto-detect any substitute command to show the dashboard
 ---@brief ]]
 
----@tag search-replace.nvim
+---@mod search-replace.installation Installation
+---@brief [[
+---lazy.nvim:
+--->lua
+---    {
+---      'mosheavni/search-replace.nvim',
+---      config = function()
+---        require('search-replace').setup()
+---      end,
+---    }
+---<
+---
+---packer.nvim:
+--->lua
+---    use({
+---      'mosheavni/search-replace.nvim',
+---      config = function()
+---        require('search-replace').setup()
+---      end,
+---    })
+---<
+---
+---vim-plug:
+--->vim
+---    Plug 'mosheavni/search-replace.nvim'
+---
+---    " In your init.lua or after/plugin:
+---    lua require('search-replace').setup()
+---<
+---@brief ]]
+
+---@mod search-replace.keymaps Default Keymaps
+---@brief [[
+---Normal/Visual Mode:
+---  `<leader>r` - Populate command line with search-replace using word under
+---                cursor or visual selection
+---
+---Command-line Mode (during search-replace):
+---  `<M-g>` - Toggle 'g' flag (global - replace all occurrences on each line)
+---  `<M-c>` - Toggle 'c' flag (confirm - ask before each replacement)
+---  `<M-i>` - Toggle 'i' flag (case-insensitive search)
+---  `<M-d>` - Toggle replace term (clear or restore to original word)
+---  `<M-5>` - Cycle range (%s -> .,$s -> 0,.s -> %s)
+---  `<M-/>` - Cycle separator (/ -> ? -> # -> : -> @ -> /)
+---  `<M-m>` - Cycle magic mode (\v -> \m -> \M -> \V -> none -> \v)
+---  `<M-h>` - Toggle dashboard visibility
+---
+---Note: `<M-...>` means Alt/Meta key. On macOS, you may need to configure
+---your terminal to send Meta key properly.
+---@brief ]]
+
+---@mod search-replace.magic Magic Modes
+---@brief [[
+---Vim's magic modes control how special characters are interpreted in patterns:
+---
+---  `\v` - Very magic: Most characters have special meaning (like Perl regex)
+---  `\m` - Magic: Standard regex (default Vim behavior)
+---  `\M` - Nomagic: Only `^` and `$` are special
+---  `\V` - Very nomagic: Only `\` is special (literal search)
+---
+---The plugin defaults to `\V` (very nomagic) for literal searching, which is
+---often what you want when replacing exact text.
+---@brief ]]
+
+---@mod search-replace.tips Tips
+---@brief [[
+---For the best experience, enable Neovim's built-in incremental command preview:
+--->lua
+---    vim.o.inccommand = 'split'
+---<
+---
+---This shows a live preview of your substitutions as you type, with matches
+---highlighted in the buffer and a split window showing off-screen changes.
+---@brief ]]
 
 ---@class SearchReplace
 ---@field setup fun(opts?: SearchReplaceConfig) Setup the plugin with user configuration
@@ -141,20 +205,7 @@ function M.setup(opts)
   -- Setup dashboard if enabled
   if config.dashboard.enable then
     local dashboard = require('search-replace.dashboard')
-    dashboard.setup({
-      symbols = config.dashboard.symbols,
-      highlights = config.dashboard.highlights,
-      keymaps = {
-        { key = config.keymaps.toggle_g or '<M-g>', flag = 'g', desc = "Toggle 'g' flag (global)" },
-        { key = config.keymaps.toggle_c or '<M-c>', flag = 'c', desc = "Toggle 'c' flag (confirm)" },
-        { key = config.keymaps.toggle_i or '<M-i>', flag = 'i', desc = "Toggle 'i' flag (case-insensitive)" },
-        { key = config.keymaps.toggle_replace or '<M-d>', flag = nil, desc = 'Toggle replace term' },
-        { key = config.keymaps.toggle_range or '<M-5>', flag = nil, desc = 'Cycle range' },
-        { key = config.keymaps.toggle_separator or '<M-/>', flag = nil, desc = 'Cycle separator' },
-        { key = config.keymaps.toggle_magic or '<M-m>', flag = nil, desc = 'Cycle magic mode' },
-        { key = config.keymaps.toggle_dashboard or '<M-h>', flag = nil, desc = 'Toggle dashboard' },
-      },
-    })
+    dashboard.setup()
   end
 
   -- Setup keymaps if enabled
@@ -163,25 +214,16 @@ function M.setup(opts)
   end
 end
 
----@type fun(mode: string): string, integer
+-- Re-export core functions (see search-replace.api for documentation)
 M.populate_searchline = core.populate_searchline
----@type fun(char: string): string
 M.toggle_char = core.toggle_char
----@type fun(): string
 M.toggle_replace_term = core.toggle_replace_term
----@type fun(): string
 M.toggle_all_file = core.toggle_all_file
----@type fun(): string
 M.toggle_separator = core.toggle_separator
----@type fun(): string
 M.toggle_magic = core.toggle_magic
----@type fun(): boolean
 M.is_active = core.is_active
 
----Get the current configuration
----@return SearchReplaceConfig config The current configuration
-function M.get_config()
-  return config_module.get()
-end
+-- Re-export config function
+M.get_config = config_module.get
 
 return M

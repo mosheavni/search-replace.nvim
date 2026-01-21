@@ -25,11 +25,12 @@
 ---@field refresh_dashboard fun(cmdline?: string) Refresh the dashboard with current cmdline state
 ---@field close_dashboard fun() Close the dashboard
 ---@field toggle_dashboard fun() Toggle the dashboard visibility
----@field setup fun(opts?: DashboardSetupConfig) Setup autocmds for the dashboard
+---@field setup fun() Setup autocmds for the dashboard
 local M = {}
 
 local Float = require('search-replace.float')
 local utils = require('search-replace.utils')
+local config_module = require('search-replace.config')
 
 ---@class DashboardState
 ---@field float FloatInstance? Float instance (nil if not created)
@@ -59,34 +60,26 @@ local function trigger_refresh()
   utils.trigger_cmdline_refresh(M.invalidate_cache)
 end
 
----@class DashboardSymbols
----@field active string Symbol for active flag indicator
----@field inactive string Symbol for inactive flag indicator
-
----@class DashboardHighlights
----@field title string Highlight group for title
----@field key string Highlight group for key
----@field arrow string Highlight group for arrow
----@field active_desc string Highlight group for active description
----@field inactive_desc string Highlight group for inactive description
----@field active_indicator string Highlight group for active indicator
----@field inactive_indicator string Highlight group for inactive indicator
----@field status_label string Highlight group for status label
----@field status_value string Highlight group for status value
-
 ---@class KeymapInfo
 ---@field key string The keymap key combination
 ---@field flag string? The flag this keymap toggles (nil for non-flag keymaps)
 ---@field desc string Description of what the keymap does
 
----@class DashboardSetupConfig
----@field symbols DashboardSymbols Visual symbols configuration
----@field highlights DashboardHighlights Highlight groups configuration
----@field keymaps KeymapInfo[] Keymap information
-
--- Config is set by setup() from init.lua, which uses centralized config.lua defaults
----@type DashboardSetupConfig
-local config
+---Build keymap info array from config
+---@return KeymapInfo[]
+local function get_keymaps_info()
+  local cfg = config_module.get()
+  return {
+    { key = cfg.keymaps.toggle_g or '<M-g>', flag = 'g', desc = "Toggle 'g' flag (global)" },
+    { key = cfg.keymaps.toggle_c or '<M-c>', flag = 'c', desc = "Toggle 'c' flag (confirm)" },
+    { key = cfg.keymaps.toggle_i or '<M-i>', flag = 'i', desc = "Toggle 'i' flag (case-insensitive)" },
+    { key = cfg.keymaps.toggle_replace or '<M-d>', flag = nil, desc = 'Toggle replace term' },
+    { key = cfg.keymaps.toggle_range or '<M-5>', flag = nil, desc = 'Cycle range' },
+    { key = cfg.keymaps.toggle_separator or '<M-/>', flag = nil, desc = 'Cycle separator' },
+    { key = cfg.keymaps.toggle_magic or '<M-m>', flag = nil, desc = 'Cycle magic mode' },
+    { key = cfg.keymaps.toggle_dashboard or '<M-h>', flag = nil, desc = 'Toggle dashboard' },
+  }
+end
 
 ---@class ParsedCommand
 ---@field range string The range part (e.g., ".,$s", "%s")
@@ -245,16 +238,18 @@ end
 ---@param parsed ParsedCommand The parsed command
 ---@return string[] keymap_lines The formatted keymap lines
 local function format_keymap_lines(parsed)
+  local cfg = config_module.get()
+  local keymaps = get_keymaps_info()
   local lines = {}
 
-  for _, km in ipairs(config.keymaps) do
+  for _, km in ipairs(keymaps) do
     local indicator = '  '
     if km.flag then
       -- Check if this flag is active
       if parsed.flags[km.flag] then
-        indicator = config.symbols.active .. ' '
+        indicator = cfg.dashboard.symbols.active .. ' '
       else
-        indicator = config.symbols.inactive .. ' '
+        indicator = cfg.dashboard.symbols.inactive .. ' '
       end
     end
 
@@ -270,6 +265,10 @@ end
 ---@param lines string[] The buffer lines
 ---@param parsed ParsedCommand The parsed command
 local function apply_highlights(buf_id, lines, parsed)
+  local cfg = config_module.get()
+  local highlights = cfg.dashboard.highlights
+  local keymaps = get_keymaps_info()
+
   if not dashboard_state.ns_id then
     dashboard_state.ns_id = vim.api.nvim_create_namespace('SearchReplaceDashboard')
   end
@@ -281,7 +280,7 @@ local function apply_highlights(buf_id, lines, parsed)
   local title_line = lines[1] -- First line in the lines array is line 0 in the buffer
   vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 0, 0, {
     end_col = #title_line,
-    hl_group = config.highlights.title,
+    hl_group = highlights.title,
   })
 
   -- Line 1: Empty (separator)
@@ -294,13 +293,13 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight "Range:" label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 2, range_label_pos - 1, {
       end_col = range_label_pos + #range_label - 1,
-      hl_group = config.highlights.status_label,
+      hl_group = highlights.status_label,
     })
     -- Highlight the range value
     local value_start = range_label_pos + #range_label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 2, value_start, {
       end_col = #range_line,
-      hl_group = config.highlights.status_value,
+      hl_group = highlights.status_value,
     })
   end
 
@@ -311,12 +310,12 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight arrow
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 3, arrow_pos - 1, {
       end_col = arrow_pos + 1,
-      hl_group = config.highlights.arrow,
+      hl_group = highlights.arrow,
     })
     -- Highlight description text
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 3, arrow_pos + 2, {
       end_col = #range_desc_line,
-      hl_group = config.highlights.inactive_desc,
+      hl_group = highlights.inactive_desc,
     })
   end
 
@@ -330,13 +329,13 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight "Magic:" label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 5, magic_label_pos - 1, {
       end_col = magic_label_pos + #magic_label - 1,
-      hl_group = config.highlights.status_label,
+      hl_group = highlights.status_label,
     })
     -- Highlight the magic value
     local value_start = magic_label_pos + #magic_label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 5, value_start, {
       end_col = #magic_line,
-      hl_group = config.highlights.status_value,
+      hl_group = highlights.status_value,
     })
   end
 
@@ -347,12 +346,12 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight arrow
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 6, magic_arrow_pos - 1, {
       end_col = magic_arrow_pos + 1,
-      hl_group = config.highlights.arrow,
+      hl_group = highlights.arrow,
     })
     -- Highlight description text
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 6, magic_arrow_pos + 2, {
       end_col = #magic_desc_line,
-      hl_group = config.highlights.inactive_desc,
+      hl_group = highlights.inactive_desc,
     })
   end
 
@@ -364,8 +363,8 @@ local function apply_highlights(buf_id, lines, parsed)
 
   -- Highlight each part of the status line
   for label, hl in pairs({
-    ['Sep:'] = config.highlights.status_label,
-    ['Flags:'] = config.highlights.status_label,
+    ['Sep:'] = highlights.status_label,
+    ['Flags:'] = highlights.status_label,
   }) do
     local start_pos = status_line:find(label, col, true)
     if start_pos then
@@ -381,7 +380,7 @@ local function apply_highlights(buf_id, lines, parsed)
       -- Convert from 1-based string indices to 0-based buffer column indices
       vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 8, value_start - 1, {
         end_col = value_end - 1,
-        hl_group = config.highlights.status_value,
+        hl_group = highlights.status_value,
       })
 
       col = value_end
@@ -398,13 +397,13 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight "Search:" label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 10, search_label_pos - 1, {
       end_col = search_label_pos + #search_label - 1,
-      hl_group = config.highlights.status_label,
+      hl_group = highlights.status_label,
     })
     -- Highlight the search value (everything after the label)
     local value_start = search_label_pos + #search_label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 10, value_start, {
       end_col = #search_line,
-      hl_group = config.highlights.status_value,
+      hl_group = highlights.status_value,
     })
   end
 
@@ -415,20 +414,20 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight "Replace:" label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 11, replace_label_pos - 1, {
       end_col = replace_label_pos + #replace_label - 1,
-      hl_group = config.highlights.status_label,
+      hl_group = highlights.status_label,
     })
     -- Highlight the replace value (everything after the label)
     local value_start = replace_label_pos + #replace_label
     vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, 11, value_start, {
       end_col = #replace_line,
-      hl_group = config.highlights.status_value,
+      hl_group = highlights.status_value,
     })
   end
 
   -- Line 12: Empty (separator)
 
   -- Lines 13+: Keymap lines
-  for i, km in ipairs(config.keymaps) do
+  for i, km in ipairs(keymaps) do
     local line_idx = 13 + i - 1
     local line = lines[line_idx + 1]
 
@@ -439,7 +438,7 @@ local function apply_highlights(buf_id, lines, parsed)
     -- Highlight indicator symbol
     if km.flag then
       local is_active = parsed.flags[km.flag]
-      local indicator_hl = is_active and config.highlights.active_indicator or config.highlights.inactive_indicator
+      local indicator_hl = is_active and highlights.active_indicator or highlights.inactive_indicator
       vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, 2, {
         end_col = 3,
         hl_group = indicator_hl,
@@ -451,7 +450,7 @@ local function apply_highlights(buf_id, lines, parsed)
     if key_start then
       vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, key_start - 1, {
         end_col = key_start + #km.key - 1,
-        hl_group = config.highlights.key,
+        hl_group = highlights.key,
       })
     end
 
@@ -460,15 +459,14 @@ local function apply_highlights(buf_id, lines, parsed)
     if arrow_start then
       vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, arrow_start - 1, {
         end_col = arrow_start + 1,
-        hl_group = config.highlights.arrow,
+        hl_group = highlights.arrow,
       })
     end
 
     -- Highlight description
     local desc_start = line:find(km.desc, 1, true)
     if desc_start then
-      local desc_hl = (km.flag and parsed.flags[km.flag]) and config.highlights.active_desc
-        or config.highlights.inactive_desc
+      local desc_hl = (km.flag and parsed.flags[km.flag]) and highlights.active_desc or highlights.inactive_desc
       vim.api.nvim_buf_set_extmark(buf_id, dashboard_state.ns_id, line_idx, desc_start - 1, {
         end_col = #line,
         hl_group = desc_hl,
@@ -624,12 +622,8 @@ function M.toggle_dashboard()
 end
 
 ---Setup autocmds for the dashboard
----@param opts DashboardSetupConfig Configuration options (required, provided by init.lua)
 ---@return nil
-function M.setup(opts)
-  -- Config is provided by init.lua from centralized config.lua
-  config = opts
-
+function M.setup()
   local augroup = vim.api.nvim_create_augroup('SearchReplaceDashboard', { clear = true })
 
   -- Reset hidden state on new cmdline session

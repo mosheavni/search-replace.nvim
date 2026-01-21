@@ -1,57 +1,36 @@
+---@mod search-replace.api API
 ---@brief [[
----Core business logic for search-replace.nvim.
+---The plugin exports the following functions via `require('search-replace')`:
 ---
----This module manages the search-replace state and provides toggle functions
----that manipulate the command line during substitute command editing.
+--->lua
+---    local sr = require('search-replace')
 ---
----Key concepts:
----- `sar_state` tracks the active session, current word, separator, and magic mode
----- Toggle functions return keystroke sequences using the `<C-\>e` expression pattern
----- All toggle functions use `set_cmd_and_pos()` to update command and cursor atomically
----- `should_sar()` detects if the current cmdline is a substitute command
+---    -- Core functions
+---    sr.populate_searchline(mode) -- 'n' for normal, 'v' for visual
+---    sr.toggle_char(char)         -- Toggle a flag ('g', 'c', or 'i')
+---    sr.toggle_replace_term()     -- Toggle replace term
+---    sr.toggle_all_file()         -- Cycle range
+---    sr.toggle_separator()        -- Cycle separator
+---    sr.toggle_magic()            -- Cycle magic mode
+---    sr.is_active()               -- Check if search-replace mode is active
+---    sr.get_config()              -- Get current configuration
+---<
 ---
----The `<C-\>e` pattern allows replacing the entire command line via expression
----evaluation, which is necessary because direct command line manipulation is
----not possible in cmdline mode.
+---Implementation details:
+---- Toggle functions return keystroke sequences using the `<C-\>e` expression
+---  pattern, which allows replacing the entire command line via expression
+---  evaluation
+---- All toggle functions use `set_cmd_and_pos()` to update command and cursor
+---  atomically
 ---@brief ]]
 
----@tag search-replace.core
-
----@class SearchReplaceCore
----@field setup fun(opts?: CoreConfig) Setup the core module with configuration
----@field is_active fun(): boolean Check if search-replace mode is active
----@field set_cmd_and_pos fun(): string Set command and cursor position (called from C-\ e expression)
----@field populate_searchline fun(mode: string): string, integer Populate the search line
----@field toggle_char fun(char: string): string Toggle a flag character
----@field toggle_replace_term fun(): string Toggle the replace term
----@field toggle_all_file fun(): string Toggle range (all file)
----@field toggle_separator fun(): string Toggle separator
----@field toggle_magic fun(): string Toggle magic mode
 local M = {}
 
 local utils = require('search-replace.utils')
 
----@class CoreConfig
----@field separators string[] Available separator characters
----@field magic_modes string[] Available magic modes
----@field flags string[] Available flags
----@field default_range string Default range for substitute command
----@field default_flags string Default flags for substitute command
----@field default_magic string Default magic mode
-
 -- Config is set by setup() from init.lua, which uses centralized config.lua defaults
----@type CoreConfig
 local config
 
----@class SarState
----@field active boolean Whether search-replace mode is active
----@field cword string The current word or visual selection
----@field sep string The current separator character
----@field magic string The current magic mode
----@field new_cmd string The new command (used by set_cmd_and_pos)
----@field cursor_pos integer The cursor position (used by set_cmd_and_pos)
-
----@type SarState
 local sar_state = {
   active = false,
   cword = '',
@@ -61,8 +40,6 @@ local sar_state = {
   cursor_pos = 0,
 }
 
----Check if we should process the current command line as a substitute command
----@return boolean
 local function should_sar()
   if vim.fn.getcmdtype() ~= ':' then
     return false
@@ -75,8 +52,6 @@ local function should_sar()
   return utils.is_substitute_cmd(vim.fn.getcmdline())
 end
 
----Get the current separator (from state if active, or parse from cmdline)
----@return string sep The current separator character
 local function get_current_sep()
   if sar_state.active then
     return sar_state.sep
@@ -85,10 +60,6 @@ local function get_current_sep()
   return parsed and parsed.sep or '/'
 end
 
----Find a character from the list that doesn't appear in the string
----@param char_list string[] List of candidate characters
----@param str string String to check against
----@return string char The first unique character, or empty string if none found
 local function find_unique_char(char_list, str)
   for _, char in ipairs(char_list) do
     if not str:find(vim.pesc(char), 1, true) then
@@ -98,15 +69,10 @@ local function find_unique_char(char_list, str)
   return ''
 end
 
----Check if search-replace mode is active
----@return boolean active Whether search-replace mode is active
 function M.is_active()
   return sar_state.active
 end
 
----Set command and cursor position (called from C-\ e expression)
----This function is called via luaeval from the keymap expressions
----@return string new_cmd The new command line content
 function M.set_cmd_and_pos()
   vim.fn.setcmdpos(sar_state.cursor_pos)
 
@@ -119,10 +85,6 @@ function M.set_cmd_and_pos()
   return sar_state.new_cmd
 end
 
----Populate the search line with the current word or visual selection
----@param mode string The mode ('n' for normal, 'v' for visual)
----@return string cmd The substitute command
----@return integer move_left Number of characters to move cursor left
 function M.populate_searchline(mode)
   -- Get word under cursor or visual selection
   if mode == 'n' then
@@ -154,9 +116,6 @@ function M.populate_searchline(mode)
   return cmd, chars_to_move_left
 end
 
----Toggle a flag character (g, c, i) in the substitute command
----@param char string The flag character to toggle
----@return string keys The keystrokes to execute (uses <C-\>e pattern)
 function M.toggle_char(char)
   local cmd = vim.fn.getcmdline()
   if not should_sar() then
@@ -194,8 +153,6 @@ function M.toggle_char(char)
     .. vim.keycode('<CR>')
 end
 
----Toggle the replace term (clear/restore original word)
----@return string keys The keystrokes to execute (uses <C-\>e pattern)
 function M.toggle_replace_term()
   local cmd = vim.fn.getcmdline()
   if not should_sar() then
@@ -222,8 +179,6 @@ function M.toggle_replace_term()
     .. vim.keycode('<CR>')
 end
 
----Toggle the range (cycle through %s -> .,$s -> 0,.s -> %s)
----@return string keys The keystrokes to execute (uses <C-\>e pattern)
 function M.toggle_all_file()
   local cmd = vim.fn.getcmdline()
   if not should_sar() then
@@ -256,8 +211,6 @@ function M.toggle_all_file()
     .. vim.keycode('<CR>')
 end
 
----Toggle the separator character (cycle through configured separators)
----@return string keys The keystrokes to execute (uses <C-\>e pattern)
 function M.toggle_separator()
   local cmd = vim.fn.getcmdline()
   if not should_sar() then
@@ -289,8 +242,6 @@ function M.toggle_separator()
     .. vim.keycode('<CR>')
 end
 
----Toggle the magic mode (cycle through configured magic modes)
----@return string keys The keystrokes to execute (uses <C-\>e pattern)
 function M.toggle_magic()
   local cmd = vim.fn.getcmdline()
   if not should_sar() then
@@ -330,10 +281,8 @@ function M.toggle_magic()
     .. vim.keycode('<CR>')
 end
 
----Setup the core module with configuration
----@param opts CoreConfig Configuration options (required, provided by init.lua)
----@return nil
-function M.setup(opts)
+-- Internal setup function (not documented to avoid tag conflicts)
+local function setup(opts)
   -- Config is provided by init.lua from centralized config.lua
   config = opts
 
@@ -345,5 +294,7 @@ function M.setup(opts)
     end,
   })
 end
+
+M.setup = setup
 
 return M

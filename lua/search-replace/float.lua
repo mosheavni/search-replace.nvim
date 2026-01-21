@@ -9,17 +9,17 @@
 ---- Supports custom content, configuration, and highlight functions
 ---
 ---Usage:
----<pre>
----local Float = require('search-replace.float')
----local float = Float.new()
+--->lua
+---    local Float = require('search-replace.float')
+---    local float = Float.new()
 ---
----float.refresh(
----  function() return { 'Line 1', 'Line 2' } end,  -- content
----  function(buf_id) return { relative = 'editor', ... } end,  -- config
----  function() return { wrap = false } end,  -- window options
----  function(buf_id, lines) --[[ apply highlights ]] end  -- highlights
----)
----</pre>
+---    float.refresh(
+---      function() return { 'Line 1', 'Line 2' } end,  -- content
+---      function(buf_id) return { relative = 'editor', ... } end,  -- config
+---      function() return { wrap = false } end,  -- window options
+---      function(buf_id, lines) --[[ apply highlights ]] end  -- highlights
+---    )
+---<
 ---@brief ]]
 
 ---@tag search-replace.float

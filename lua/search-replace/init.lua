@@ -88,6 +88,96 @@
 ---highlighted in the buffer and a split window showing off-screen changes.
 ---@brief ]]
 
+---@mod search-replace.config Configuration
+---@brief [[
+---Full default configuration with all available options:
+--->lua
+---    require('search-replace').setup({
+---      -- Keymaps configuration
+---      keymaps = {
+---        enable = true,
+---        populate = '<leader>r', -- Normal/Visual mode: populate search-replace
+---        toggle_g = '<M-g>',     -- Toggle global flag
+---        toggle_c = '<M-c>',     -- Toggle confirm flag
+---        toggle_i = '<M-i>',     -- Toggle case-insensitive flag
+---        toggle_replace = '<M-d>', -- Toggle replace term (clear/restore)
+---        toggle_range = '<M-5>',   -- Cycle range (%s, .,$s, 0,.s)
+---        toggle_separator = '<M-/>', -- Cycle separator (/, ?, #, :, @)
+---        toggle_magic = '<M-m>',     -- Cycle magic mode (\v, \m, \M, \V, none)
+---        toggle_dashboard = '<M-h>', -- Toggle dashboard visibility
+---      },
+---      -- Dashboard configuration
+---      dashboard = {
+---        enable = true,
+---        symbols = {
+---          active = '●',   -- Active flag indicator
+---          inactive = '○', -- Inactive flag indicator
+---        },
+---        highlights = {
+---          title = 'Title',
+---          key = 'Special',
+---          arrow = 'Comment',
+---          active_desc = 'String',
+---          inactive_desc = 'Comment',
+---          active_indicator = 'DiagnosticOk',
+---          inactive_indicator = 'Comment',
+---          status_label = 'Comment',
+---          status_value = 'Constant',
+---        },
+---      },
+---      -- Core settings
+---      separators = { '/', '?', '#', ':', '@' },
+---      magic_modes = { '\\v', '\\m', '\\M', '\\V', '' },
+---      flags = { 'g', 'c', 'i' },
+---      default_range = '.,$s',
+---      default_flags = 'gc',
+---      default_magic = '\\V',
+---    })
+---<
+---@brief ]]
+
+---@class SearchReplaceKeymapConfig
+---@field enable boolean Whether to enable keymaps
+---@field populate? string Normal/Visual mode keymap to populate search line
+---@field toggle_g? string Keymap to toggle global flag
+---@field toggle_c? string Keymap to toggle confirm flag
+---@field toggle_i? string Keymap to toggle case-insensitive flag
+---@field toggle_replace? string Keymap to toggle replace term
+---@field toggle_range? string Keymap to cycle range
+---@field toggle_separator? string Keymap to cycle separator
+---@field toggle_magic? string Keymap to cycle magic mode
+---@field toggle_dashboard? string Keymap to toggle dashboard
+
+---@class SearchReplaceDashboardSymbols
+---@field active string Symbol for active flag indicator
+---@field inactive string Symbol for inactive flag indicator
+
+---@class SearchReplaceDashboardHighlights
+---@field title string Highlight group for title
+---@field key string Highlight group for key
+---@field arrow string Highlight group for arrow
+---@field active_desc string Highlight group for active description
+---@field inactive_desc string Highlight group for inactive description
+---@field active_indicator string Highlight group for active indicator
+---@field inactive_indicator string Highlight group for inactive indicator
+---@field status_label string Highlight group for status label
+---@field status_value string Highlight group for status value
+
+---@class SearchReplaceDashboardConfig
+---@field enable boolean Whether to enable the dashboard
+---@field symbols SearchReplaceDashboardSymbols Visual symbols configuration
+---@field highlights SearchReplaceDashboardHighlights Highlight groups configuration
+
+---@class SearchReplaceConfig
+---@field keymaps SearchReplaceKeymapConfig Keymaps configuration
+---@field dashboard SearchReplaceDashboardConfig Dashboard configuration
+---@field separators string[] Available separator characters
+---@field magic_modes string[] Available magic modes
+---@field flags string[] Available flags
+---@field default_range string Default range for substitute command
+---@field default_flags string Default flags for substitute command
+---@field default_magic string Default magic mode
+
 ---@class SearchReplace
 ---@field setup fun(opts?: SearchReplaceConfig) Setup the plugin with user configuration
 ---@field populate_searchline fun(mode: string): string, integer Populate the search line
@@ -101,7 +191,55 @@
 local M = {}
 
 local core = require('search-replace.core')
-local config_module = require('search-replace.config')
+
+-- Default configuration (merged from config.lua)
+local defaults = {
+  keymaps = {
+    enable = true,
+    populate = '<leader>r',
+    toggle_g = '<M-g>',
+    toggle_c = '<M-c>',
+    toggle_i = '<M-i>',
+    toggle_replace = '<M-d>',
+    toggle_range = '<M-5>',
+    toggle_separator = '<M-/>',
+    toggle_magic = '<M-m>',
+    toggle_dashboard = '<M-h>',
+  },
+  dashboard = {
+    enable = true,
+    symbols = {
+      active = '●',
+      inactive = '○',
+    },
+    highlights = {
+      title = 'Title',
+      key = 'Special',
+      arrow = 'Comment',
+      active_desc = 'String',
+      inactive_desc = 'Comment',
+      active_indicator = 'DiagnosticOk',
+      inactive_indicator = 'Comment',
+      status_label = 'Comment',
+      status_value = 'Constant',
+    },
+  },
+  separators = { '/', '?', '#', ':', '@' },
+  magic_modes = { '\\v', '\\m', '\\M', '\\V', '' },
+  flags = { 'g', 'c', 'i' },
+  default_range = '.,$s',
+  default_flags = 'gc',
+  default_magic = '\\V',
+}
+
+-- Current configuration
+local current_config = vim.deepcopy(defaults)
+
+---Get the current configuration
+---@return SearchReplaceConfig
+function M.get_config()
+  return current_config
+end
 
 ---Setup keymaps for search-replace functionality
 ---@param keymap_config SearchReplaceKeymapConfig
@@ -188,29 +326,28 @@ end
 --- Setup the plugin with user configuration
 ---@param opts? table User configuration options
 function M.setup(opts)
-  -- Merge user options with defaults in centralized config
-  config_module.setup(opts)
-  local config = config_module.get()
+  -- Merge user options with defaults
+  current_config = vim.tbl_deep_extend('force', vim.deepcopy(defaults), opts or {})
 
   -- Setup core module
   core.setup({
-    separators = config.separators,
-    magic_modes = config.magic_modes,
-    flags = config.flags,
-    default_range = config.default_range,
-    default_flags = config.default_flags,
-    default_magic = config.default_magic,
+    separators = current_config.separators,
+    magic_modes = current_config.magic_modes,
+    flags = current_config.flags,
+    default_range = current_config.default_range,
+    default_flags = current_config.default_flags,
+    default_magic = current_config.default_magic,
   })
 
   -- Setup dashboard if enabled
-  if config.dashboard.enable then
+  if current_config.dashboard.enable then
     local dashboard = require('search-replace.dashboard')
     dashboard.setup()
   end
 
   -- Setup keymaps if enabled
-  if config.keymaps.enable then
-    setup_keymaps(config.keymaps)
+  if current_config.keymaps.enable then
+    setup_keymaps(current_config.keymaps)
   end
 end
 
@@ -222,8 +359,5 @@ M.toggle_all_file = core.toggle_all_file
 M.toggle_separator = core.toggle_separator
 M.toggle_magic = core.toggle_magic
 M.is_active = core.is_active
-
--- Re-export config function
-M.get_config = config_module.get
 
 return M

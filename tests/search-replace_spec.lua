@@ -1,8 +1,7 @@
 ---@diagnostic disable: undefined-field
 --# selene: allow(undefined_variable)
 local utils = require('search-replace.utils')
-local config = require('search-replace.config')
-local float = require('search-replace.float')
+local search_replace = require('search-replace')
 local eq = assert.are.same
 
 describe('search-replace.utils', function()
@@ -536,86 +535,92 @@ describe('search-replace logic', function()
   end)
 end)
 
-describe('search-replace.config', function()
+describe('search-replace.get_config', function()
   describe('defaults', function()
     it('has default keymaps', function()
-      eq(config.defaults.keymaps.enable, true)
-      eq(config.defaults.keymaps.populate, '<leader>r')
-      eq(config.defaults.keymaps.toggle_g, '<M-g>')
-      eq(config.defaults.keymaps.toggle_c, '<M-c>')
-      eq(config.defaults.keymaps.toggle_i, '<M-i>')
-      eq(config.defaults.keymaps.toggle_replace, '<M-d>')
-      eq(config.defaults.keymaps.toggle_range, '<M-5>')
-      eq(config.defaults.keymaps.toggle_separator, '<M-/>')
-      eq(config.defaults.keymaps.toggle_magic, '<M-m>')
-      eq(config.defaults.keymaps.toggle_dashboard, '<M-h>')
+      local config = search_replace.get_config()
+      eq(config.keymaps.enable, true)
+      eq(config.keymaps.populate, '<leader>r')
+      eq(config.keymaps.toggle_g, '<M-g>')
+      eq(config.keymaps.toggle_c, '<M-c>')
+      eq(config.keymaps.toggle_i, '<M-i>')
+      eq(config.keymaps.toggle_replace, '<M-d>')
+      eq(config.keymaps.toggle_range, '<M-5>')
+      eq(config.keymaps.toggle_separator, '<M-/>')
+      eq(config.keymaps.toggle_magic, '<M-m>')
+      eq(config.keymaps.toggle_dashboard, '<M-h>')
     end)
 
     it('has default dashboard config', function()
-      eq(config.defaults.dashboard.enable, true)
-      eq(config.defaults.dashboard.symbols.active, '●')
-      eq(config.defaults.dashboard.symbols.inactive, '○')
+      local config = search_replace.get_config()
+      eq(config.dashboard.enable, true)
+      eq(config.dashboard.symbols.active, '●')
+      eq(config.dashboard.symbols.inactive, '○')
     end)
 
     it('has default separators', function()
-      eq(config.defaults.separators, { '/', '?', '#', ':', '@' })
+      local config = search_replace.get_config()
+      eq(config.separators, { '/', '?', '#', ':', '@' })
     end)
 
     it('has default magic modes', function()
-      eq(config.defaults.magic_modes, { '\\v', '\\m', '\\M', '\\V', '' })
+      local config = search_replace.get_config()
+      eq(config.magic_modes, { '\\v', '\\m', '\\M', '\\V', '' })
     end)
 
     it('has default flags', function()
-      eq(config.defaults.flags, { 'g', 'c', 'i' })
+      local config = search_replace.get_config()
+      eq(config.flags, { 'g', 'c', 'i' })
     end)
 
     it('has default range and flags', function()
-      eq(config.defaults.default_range, '.,$s')
-      eq(config.defaults.default_flags, 'gc')
-      eq(config.defaults.default_magic, '\\V')
+      local config = search_replace.get_config()
+      eq(config.default_range, '.,$s')
+      eq(config.default_flags, 'gc')
+      eq(config.default_magic, '\\V')
     end)
   end)
 
   describe('setup', function()
     it('merges user options with defaults', function()
-      config.setup({ default_range = '%s' })
-      eq(config.get().default_range, '%s')
+      search_replace.setup({ default_range = '%s' })
+      eq(search_replace.get_config().default_range, '%s')
       -- Other defaults should remain
-      eq(config.get().default_flags, 'gc')
+      eq(search_replace.get_config().default_flags, 'gc')
       -- Reset
-      config.setup({})
+      search_replace.setup({})
     end)
 
     it('allows disabling keymaps', function()
-      config.setup({ keymaps = { enable = false } })
-      eq(config.get().keymaps.enable, false)
+      search_replace.setup({ keymaps = { enable = false } })
+      eq(search_replace.get_config().keymaps.enable, false)
       -- Other keymap defaults should remain
-      eq(config.get().keymaps.populate, '<leader>r')
+      eq(search_replace.get_config().keymaps.populate, '<leader>r')
       -- Reset
-      config.setup({})
+      search_replace.setup({})
     end)
 
     it('allows custom separators', function()
-      config.setup({ separators = { '/', '#' } })
-      eq(config.get().separators, { '/', '#' })
+      search_replace.setup({ separators = { '/', '#' } })
+      eq(search_replace.get_config().separators, { '/', '#' })
       -- Reset
-      config.setup({})
+      search_replace.setup({})
     end)
 
     it('handles empty options', function()
-      config.setup({})
-      eq(config.get().default_range, '.,$s')
+      search_replace.setup({})
+      eq(search_replace.get_config().default_range, '.,$s')
     end)
 
     it('handles nil options', function()
-      config.setup(nil)
-      eq(config.get().default_range, '.,$s')
+      search_replace.setup(nil)
+      eq(search_replace.get_config().default_range, '.,$s')
     end)
   end)
 
-  describe('get', function()
+  describe('get_config', function()
     it('returns current configuration', function()
-      local cfg = config.get()
+      local cfg = search_replace.get_config()
       assert.is_not_nil(cfg)
       assert.is_not_nil(cfg.keymaps)
       assert.is_not_nil(cfg.dashboard)
@@ -931,534 +936,6 @@ describe('SUBSTITUTE_PATTERN and MAGIC_PATTERN', function()
       assert.is_nil(string.match('foo', utils.MAGIC_PATTERN))
       assert.is_nil(string.match('\\nfoo', utils.MAGIC_PATTERN))
       assert.is_nil(string.match('\\xfoo', utils.MAGIC_PATTERN))
-    end)
-  end)
-end)
-
-describe('search-replace.float', function()
-  describe('new', function()
-    it('creates a new float instance', function()
-      local instance = float.new()
-      assert.is_not_nil(instance)
-    end)
-
-    it('returns instance with expected methods', function()
-      local instance = float.new()
-      assert.is_function(instance.refresh)
-      assert.is_function(instance.close)
-      assert.is_function(instance.is_shown)
-      assert.is_function(instance.toggle)
-      assert.is_function(instance.buffer_default_dimensions)
-      assert.is_function(instance.fit_to_width)
-      assert.is_function(instance.set_buf_name)
-    end)
-
-    it('initializes with empty cache', function()
-      local instance = float.new()
-      assert.is_nil(instance.cache.buf_id)
-      assert.is_nil(instance.cache.win_id)
-    end)
-
-    it('creates independent instances', function()
-      local instance1 = float.new()
-      local instance2 = float.new()
-      assert.are_not.equal(instance1.cache, instance2.cache)
-    end)
-  end)
-
-  describe('is_shown', function()
-    it('returns false when window not created', function()
-      local instance = float.new()
-      assert.is_false(instance.is_shown())
-    end)
-
-    it('returns false when cache is empty', function()
-      local instance = float.new()
-      instance.cache.win_id = nil
-      assert.is_false(instance.is_shown())
-    end)
-  end)
-
-  describe('fit_to_width', function()
-    it('returns text unchanged when shorter than width', function()
-      local instance = float.new()
-      local result = instance.fit_to_width('hello', 10)
-      eq(result, 'hello')
-    end)
-
-    it('returns text unchanged when exactly at width', function()
-      local instance = float.new()
-      local result = instance.fit_to_width('hello', 5)
-      eq(result, 'hello')
-    end)
-
-    it('truncates text with ellipsis when longer than width', function()
-      local instance = float.new()
-      local result = instance.fit_to_width('hello world', 8)
-      -- Result should start with '...' and show the tail of the text
-      -- Formula: '...' (3 chars) + strcharpart(text, t_width - width + 1, width - 1)
-      -- For 'hello world' (11 chars), width 8: '...' + 'o world' (7 chars) = '...o world'
-      assert.is_true(result:sub(1, 3) == '...')
-      eq(result, '...o world')
-    end)
-
-    it('handles empty string', function()
-      local instance = float.new()
-      local result = instance.fit_to_width('', 10)
-      eq(result, '')
-    end)
-
-    it('handles width of 1', function()
-      local instance = float.new()
-      -- With width 1, only room for one char after ellipsis truncation
-      local result = instance.fit_to_width('hello', 4)
-      assert.is_true(result:sub(1, 3) == '...')
-    end)
-  end)
-
-  describe('close', function()
-    it('handles close when nothing is open', function()
-      local instance = float.new()
-      -- Should not error when closing non-existent window/buffer
-      assert.has_no.errors(function()
-        instance.close()
-      end)
-    end)
-
-    it('clears cache after close', function()
-      local instance = float.new()
-      instance.close()
-      assert.is_nil(instance.cache.win_id)
-      assert.is_nil(instance.cache.buf_id)
-    end)
-  end)
-
-  describe('refresh', function()
-    it('closes window when content_fn returns empty table', function()
-      local instance = float.new()
-      local content_fn = function()
-        return {}
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 10, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      assert.is_false(instance.is_shown())
-    end)
-
-    it('closes window when content_fn returns nil', function()
-      local instance = float.new()
-      local content_fn = function()
-        return nil
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 10, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      assert.is_false(instance.is_shown())
-    end)
-
-    it('creates window with valid content', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'line 1', 'line 2' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 2, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      assert.is_true(instance.is_shown())
-      assert.is_not_nil(instance.cache.buf_id)
-      assert.is_not_nil(instance.cache.win_id)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('sets buffer content correctly', function()
-      local instance = float.new()
-      local expected_lines = { 'hello', 'world' }
-      local content_fn = function()
-        return expected_lines
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 2, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local actual_lines = vim.api.nvim_buf_get_lines(instance.cache.buf_id, 0, -1, false)
-      eq(actual_lines, expected_lines)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('applies window options when opts_fn provided', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-      local opts_fn = function()
-        return { wrap = false, cursorline = false }
-      end
-
-      instance.refresh(content_fn, config_fn, opts_fn)
-
-      local wrap = vim.api.nvim_get_option_value('wrap', { win = instance.cache.win_id })
-      eq(wrap, false)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('calls highlights_fn when provided', function()
-      local instance = float.new()
-      local highlights_called = false
-      local received_buf_id = nil
-      local received_lines = nil
-
-      local content_fn = function()
-        return { 'test line' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-      local highlights_fn = function(buf_id, lines)
-        highlights_called = true
-        received_buf_id = buf_id
-        received_lines = lines
-      end
-
-      instance.refresh(content_fn, config_fn, nil, highlights_fn)
-
-      assert.is_true(highlights_called)
-      eq(received_buf_id, instance.cache.buf_id)
-      eq(received_lines, { 'test line' })
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('reuses existing buffer on subsequent refreshes', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'content' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-      local first_buf_id = instance.cache.buf_id
-
-      -- Refresh again with different content
-      local content_fn2 = function()
-        return { 'new content' }
-      end
-      instance.refresh(content_fn2, config_fn)
-
-      eq(instance.cache.buf_id, first_buf_id)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('updates buffer content on refresh', function()
-      local instance = float.new()
-      local call_count = 0
-      local content_fn = function()
-        call_count = call_count + 1
-        return { 'content ' .. call_count }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-      local lines1 = vim.api.nvim_buf_get_lines(instance.cache.buf_id, 0, -1, false)
-      eq(lines1, { 'content 1' })
-
-      instance.refresh(content_fn, config_fn)
-      local lines2 = vim.api.nvim_buf_get_lines(instance.cache.buf_id, 0, -1, false)
-      eq(lines2, { 'content 2' })
-
-      -- Cleanup
-      instance.close()
-    end)
-  end)
-
-  describe('toggle', function()
-    it('opens window when closed', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'toggle test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      assert.is_false(instance.is_shown())
-      instance.toggle(content_fn, config_fn)
-      assert.is_true(instance.is_shown())
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('closes window when open', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'toggle test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-      assert.is_true(instance.is_shown())
-
-      instance.toggle(content_fn, config_fn)
-      assert.is_false(instance.is_shown())
-    end)
-
-    it('toggles correctly in sequence', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'toggle test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      assert.is_false(instance.is_shown())
-      instance.toggle(content_fn, config_fn)
-      assert.is_true(instance.is_shown())
-      instance.toggle(content_fn, config_fn)
-      assert.is_false(instance.is_shown())
-      instance.toggle(content_fn, config_fn)
-      assert.is_true(instance.is_shown())
-
-      -- Cleanup
-      instance.close()
-    end)
-  end)
-
-  describe('buffer_default_dimensions', function()
-    it('computes dimensions for single line', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'hello' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local width, height = instance.buffer_default_dimensions(instance.cache.buf_id, 1.0)
-      assert.is_true(width >= 5) -- 'hello' is 5 chars
-      eq(height, 1)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('computes dimensions for multiple lines', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'short', 'longer line here' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 2, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local width, height = instance.buffer_default_dimensions(instance.cache.buf_id, 1.0)
-      assert.is_true(width >= 16) -- longest line is 'longer line here' (16 chars)
-      eq(height, 2)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('respects max_width_share parameter', function()
-      local instance = float.new()
-      -- Create a very long line
-      local long_line = string.rep('x', 1000)
-      local content_fn = function()
-        return { long_line }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local width, _ = instance.buffer_default_dimensions(instance.cache.buf_id, 0.5)
-      local max_allowed = math.floor(0.5 * vim.o.columns)
-      assert.is_true(width <= max_allowed)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('handles empty buffer', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { '' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local width, height = instance.buffer_default_dimensions(instance.cache.buf_id, 1.0)
-      assert.is_true(width >= 1) -- minimum width is 1
-      eq(height, 1)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('clamps max_width_share to valid range', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      -- Test with value > 1 (should be clamped to 1)
-      local width1, _ = instance.buffer_default_dimensions(instance.cache.buf_id, 1.5)
-      local width2, _ = instance.buffer_default_dimensions(instance.cache.buf_id, 1.0)
-      eq(width1, width2)
-
-      -- Test with value < 0 (should be clamped to 0)
-      local width3, _ = instance.buffer_default_dimensions(instance.cache.buf_id, -0.5)
-      eq(width3, 1) -- minimum width is 1
-
-      -- Cleanup
-      instance.close()
-    end)
-  end)
-
-  describe('set_buf_name', function()
-    it('sets buffer name with pattern', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-      instance.set_buf_name(instance.cache.buf_id, 'dashboard')
-
-      local name = vim.api.nvim_buf_get_name(instance.cache.buf_id)
-      assert.is_true(name:match('float://') ~= nil)
-      assert.is_true(name:match('dashboard') ~= nil)
-
-      -- Cleanup
-      instance.close()
-    end)
-  end)
-
-  describe('buffer properties', function()
-    it('creates unlisted buffer', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local listed = vim.api.nvim_get_option_value('buflisted', { buf = instance.cache.buf_id })
-      assert.is_false(listed)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('creates non-modifiable buffer after content set', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local modifiable = vim.api.nvim_get_option_value('modifiable', { buf = instance.cache.buf_id })
-      assert.is_false(modifiable)
-
-      -- Cleanup
-      instance.close()
-    end)
-
-    it('sets bufhidden to wipe', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-
-      local bufhidden = vim.api.nvim_get_option_value('bufhidden', { buf = instance.cache.buf_id })
-      eq(bufhidden, 'wipe')
-
-      -- Cleanup
-      instance.close()
-    end)
-  end)
-
-  describe('window invalidation', function()
-    it('recreates window after manual close', function()
-      local instance = float.new()
-      local content_fn = function()
-        return { 'test' }
-      end
-      local config_fn = function()
-        return { relative = 'editor', width = 20, height = 1, row = 0, col = 0 }
-      end
-
-      instance.refresh(content_fn, config_fn)
-      local first_win_id = instance.cache.win_id
-
-      -- Manually close the window
-      vim.api.nvim_win_close(first_win_id, true)
-      assert.is_false(vim.api.nvim_win_is_valid(first_win_id))
-
-      -- Refresh should recreate the window
-      instance.refresh(content_fn, config_fn)
-      assert.is_true(instance.is_shown())
-      assert.are_not.equal(instance.cache.win_id, first_win_id)
-
-      -- Cleanup
-      instance.close()
     end)
   end)
 end)

@@ -32,6 +32,5 @@ docs:
 	}
 	lemmy-help -c \
 		lua/search-replace/init.lua \
-		lua/search-replace/config.lua \
 		lua/search-replace/core.lua \
 		> doc/search-replace.txt

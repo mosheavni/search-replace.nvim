@@ -7,12 +7,17 @@ on:
       - 'lua/**/*.lua'
       - '.github/workflows/docs.yml'
 
+permissions:
+  contents: write
+
 jobs:
   docs:
     runs-on: ubuntu-latest
     name: Generate vimdoc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
 
       - name: Download lemmy-help
         run: |
@@ -28,7 +33,9 @@ jobs:
             > doc/search-replace.txt
 
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
+        id: auto-commit
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "docs: auto-generate vimdoc"
           file_pattern: doc/*.txt
+          disable_globbing: true

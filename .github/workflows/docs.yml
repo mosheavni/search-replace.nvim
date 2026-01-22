@@ -4,8 +4,8 @@ on:
   push:
     branches: [master]
     paths:
-      - 'lua/**/*.lua'
-      - '.github/workflows/docs.yml'
+      - "lua/**/*.lua"
+      - ".github/workflows/docs.yml"
 
 permissions:
   contents: write
@@ -28,7 +28,6 @@ jobs:
         run: |
           ./lemmy-help -c \
             lua/search-replace/init.lua \
-            lua/search-replace/config.lua \
             lua/search-replace/core.lua \
             > doc/search-replace.txt
 

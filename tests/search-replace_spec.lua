@@ -50,12 +50,14 @@ describe('search-replace.utils', function()
       assert.is_true(utils.is_substitute_cmd('.,$s#'))
     end)
 
-    it('matches commands starting with s and any char (loose detection)', function()
-      -- The pattern is intentionally loose - it matches 's' followed by any character
-      -- This is by design: further parsing validates if it's a real substitute command
-      assert.is_true(utils.is_substitute_cmd('set number')) -- matches s followed by e
-      assert.is_true(utils.is_substitute_cmd('syntax on')) -- matches s followed by y
-      -- But it won't match commands that don't follow the pattern at all
+    it('rejects commands starting with s followed by alphanumeric chars', function()
+      -- The pattern requires a non-alphanumeric separator after 's'
+      -- This prevents false positives on :set, :sort, :source, etc.
+      assert.is_false(utils.is_substitute_cmd('set number')) -- 'e' is alphanumeric
+      assert.is_false(utils.is_substitute_cmd('syntax on')) -- 'y' is alphanumeric
+      assert.is_false(utils.is_substitute_cmd('sort')) -- 'o' is alphanumeric
+      assert.is_false(utils.is_substitute_cmd('source file.lua')) -- 'o' is alphanumeric
+      -- And of course, commands without 's' at the start don't match
       assert.is_false(utils.is_substitute_cmd('write')) -- no 's'
       assert.is_false(utils.is_substitute_cmd('quit')) -- no 's'
     end)

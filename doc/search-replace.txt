@@ -6,6 +6,7 @@ Installation ·································�
 Default Keymaps ······································· |search-replace.keymaps|
 Magic Modes ············································· |search-replace.magic|
 Tips ····················································· |search-replace.tips|
+Interactive Demo ········································· |search-replace.demo|
 Configuration ·········································· |search-replace.config|
 API ······················································· |search-replace.api|
 
@@ -97,26 +98,47 @@ For the best experience, enable Neovim's built-in incremental command preview:
 This shows a live preview of your substitutions as you type, with matches
 highlighted in the buffer and a split window showing off-screen changes.
 
-SearchReplace                                *search-replace.tips.SearchReplace*
+==============================================================================
+Interactive Demo                                           *search-replace.demo*
 
-    Fields: ~
-        {setup}                (fun(opts?:SearchReplaceConfig))   Setup the plugin with user configuration
-        {populate_searchline}  (fun(mode:string):string,integer)  Populate the search line
-        {toggle_char}          (fun(char:string):string)          Toggle a flag character
-        {toggle_replace_term}  (fun():string)                     Toggle the replace term
-        {toggle_all_file}      (fun():string)                     Toggle range (all file)
-        {toggle_separator}     (fun():string)                     Toggle separator
-        {toggle_magic}         (fun():string)                     Toggle magic mode
-        {is_active}            (fun():boolean)                    Check if search-replace mode is active
-        {get_config}           (fun():SearchReplaceConfig)        Get the current configuration
+The plugin includes an interactive demo file to help you learn all features.
 
+Location: `demo/interactive_demo.txt` in the plugin directory.
 
-M.setup({opts?})                                                       *M.setup*
-     Setup the plugin with user configuration
+The demo covers:
+- Basic usage with `<leader>r`
+- The 'g' flag (global vs first match per line)
+- The 'c' flag (confirm each replacement)
+- The 'i' flag (case insensitive search)
+- Range cycling with `<M-5>` (cursor-to-end, start-to-cursor, whole file)
+- Separator cycling with `<M-/>` (useful for paths/URLs)
+- Magic modes with `<M-m>` (literal vs regex matching)
+- Toggle replace term with `<M-d>` (for delete operations)
+- Dashboard visibility with `<M-h>`
+- Visual mode selections
+- Real-world examples combining multiple features
 
-    Parameters: ~
-        {opts?}  (table)  User configuration options
+To use the demo:
+1. Open the demo file in Neovim
+2. Follow the step-by-step instructions in each section
+3. Place your cursor where indicated and try the keymaps
+4. Observe the live preview with `vim.o.inccommand = 'split'`
 
+Quick reference (available at the end of the demo file):
+>
+    TRIGGER:
+      <leader>r     Start search-replace (normal or visual mode)
+
+    DURING COMMAND EDITING:
+      <M-g>         Toggle 'g' flag (global)
+      <M-c>         Toggle 'c' flag (confirm)
+      <M-i>         Toggle 'i' flag (case insensitive)
+      <M-d>         Toggle replace term (clear/restore)
+      <M-5>         Cycle range (.,$s -> 0,.s -> %s)
+      <M-/>         Cycle separator (/ -> ? -> # -> : -> @)
+      <M-m>         Cycle magic mode (\v -> \m -> \M -> \V -> none)
+      <M-h>         Toggle dashboard visibility
+<
 
 ==============================================================================
 Configuration                                            *search-replace.config*
@@ -165,14 +187,6 @@ Full default configuration with all available options:
       default_magic = '\\V',
     })
 <
-
-Configuration structure:
-- `keymaps` - Keymap bindings for normal, visual, and command-line modes
-- `dashboard` - Dashboard appearance settings (symbols, highlights)
-- `separators` - Available separator characters for substitute commands
-- `magic_modes` - Available regex magic modes (\v, \m, \M, \V)
-- `flags` - Available substitute flags (g, c, i)
-- `default_*` - Default values for new substitute commands
 
                                *search-replace.config.SearchReplaceKeymapConfig*
 SearchReplaceKeymapConfig
@@ -236,6 +250,34 @@ SearchReplaceConfig
         {default_magic}  (string)                        Default magic mode
 
 
+SearchReplace                              *search-replace.config.SearchReplace*
+
+    Fields: ~
+        {setup}                (fun(opts?:SearchReplaceConfig))   Setup the plugin with user configuration
+        {populate_searchline}  (fun(mode:string):string,integer)  Populate the search line
+        {toggle_char}          (fun(char:string):string)          Toggle a flag character
+        {toggle_replace_term}  (fun():string)                     Toggle the replace term
+        {toggle_all_file}      (fun():string)                     Toggle range (all file)
+        {toggle_separator}     (fun():string)                     Toggle separator
+        {toggle_magic}         (fun():string)                     Toggle magic mode
+        {is_active}            (fun():boolean)                    Check if search-replace mode is active
+        {get_config}           (fun():SearchReplaceConfig)        Get the current configuration
+
+
+M.get_config()                                                    *M.get_config*
+    Get the current configuration
+
+    Returns: ~
+        (SearchReplaceConfig)
+
+
+M.setup({opts?})                                                       *M.setup*
+     Setup the plugin with user configuration
+
+    Parameters: ~
+        {opts?}  (table)  User configuration options
+
+
 ==============================================================================
 API                                                         *search-replace.api*
 
@@ -284,6 +326,9 @@ M.toggle_separator()                                        *M.toggle_separator*
 
 
 M.toggle_magic()                                                *M.toggle_magic*
+
+
+M.setup()                                                              *M.setup*
 
 
 vim:tw=78:ts=8:noet:ft=help:norl:

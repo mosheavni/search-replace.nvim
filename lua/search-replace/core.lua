@@ -76,13 +76,11 @@ end
 function M.set_cmd_and_pos()
   vim.fn.setcmdpos(sar_state.cursor_pos)
 
-  -- Invalidate dashboard cache so the CmdlineChanged autocmd will refresh it
-  -- Note: We don't use trigger_cmdline_refresh() here because it interferes
-  -- with Neovim's inccommand preview. The CmdlineChanged event will fire
-  -- automatically when the command line changes after this function returns.
+  -- Trigger dashboard refresh via fake keystroke
+  -- This causes a one-time CmdlineChanged event which refreshes the dashboard
   local ok, dashboard = pcall(require, 'search-replace.dashboard')
   if ok and dashboard and dashboard.invalidate_cache then
-    dashboard.invalidate_cache()
+    utils.trigger_cmdline_refresh(dashboard.invalidate_cache)
   end
 
   return sar_state.new_cmd

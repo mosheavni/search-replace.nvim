@@ -9,8 +9,10 @@
 ---- `normalize_parts()` - Ensures command parts array has 4 elements
 ---- `get_visual_selection()` - Retrieves visual selection text
 ---
----The fake keystroke technique (space + backspace) is used because direct
----redraws don't work properly in command-line mode.
+---The fake keystroke technique (space + backspace) is used for toggle operations
+---to trigger CmdlineChanged and properly refresh the dashboard. This is only
+---used for one-time operations (toggles), not during typing, to avoid
+---interfering with inccommand preview.
 ---@brief ]]
 
 ---@tag search-replace.utils
@@ -120,8 +122,9 @@ function M.parse_substitute_cmd(cmd)
   }
 end
 
----Trigger a cmdline refresh via fake keystroke
----This is needed because direct refresh calls don't work properly in cmdline mode
+---Trigger a cmdline refresh via fake keystroke (space + backspace)
+---This triggers CmdlineChanged which properly refreshes the dashboard.
+---Only use this for one-time operations (toggles), not for every keystroke.
 ---@param invalidate_fn? fun() Optional function to call before triggering (e.g., cache invalidation)
 ---@return nil
 function M.trigger_cmdline_refresh(invalidate_fn)
@@ -135,11 +138,12 @@ function M.trigger_cmdline_refresh(invalidate_fn)
     -- Calculate how many <Left> keys needed to restore position after going to end
     local chars_to_move_left = cmd_len - pos + 1
 
-    -- Go to end (to avoid inserting space in middle), insert space, delete it,
-    -- then move back to original position
+    -- Go to end, insert space, delete it, then restore position
+    -- This triggers CmdlineChanged which refreshes the dashboard
+    -- Use 't' flag to handle keys as if typed (needed for inccommand)
     local restore_keys = string.rep(vim.keycode('<Left>'), chars_to_move_left)
-    vim.fn.feedkeys(vim.keycode('<End>') .. ' ' .. vim.keycode('<BS>') .. restore_keys, 'in')
-  end, 50)
+    vim.api.nvim_feedkeys(vim.keycode('<End>') .. ' ' .. vim.keycode('<BS>') .. restore_keys, 'nt', true)
+  end, 10)
 end
 
 ---Normalize command parts to always have 4 elements: range, search, replace, flags

@@ -56,27 +56,67 @@ The plugin follows a modular architecture with four main components:
 - Uses `CmdlineChanged` autocmd to auto-detect and display dashboard for any substitute command
 - Maintains a `hidden` state to respect user's manual toggle
 - Applies syntax highlighting using extmarks in a namespace
-
-### float.lua (Window Management)
-
-- Reusable floating window implementation inspired by mini.notify architecture
-- Handles buffer/window caching, creation, and cleanup
-- Uses `vim.cmd('redraw')` after updates for immediate display
-- Reschedules operations via `vim.schedule()` when in fast event context
+- Includes inlined float helpers for buffer/window management
 
 ### utils.lua (Shared Utilities)
 
 - Pattern constants for substitute command detection
 - `parse_substitute_cmd()` - parses `:s` commands into range/separator/magic/search/replace/flags
 - `split_by_separator()` - splits strings while respecting escaped separators
-- `trigger_cmdline_refresh()` - uses fake keystroke (space + backspace) to force cmdline refresh
+- `trigger_cmdline_refresh()` - uses fake keystroke (space + backspace) to force cmdline refresh for toggles
 
 ## Key Implementation Details
 
 - Toggle functions return expression strings that Neovim evaluates (using `{ expr = true }` in keymap)
 - The `<C-\>e` pattern allows replacing the entire command line via expression evaluation
-- Dashboard refresh uses a fake keystroke technique because direct redraws don't work in cmdline mode
+- Dashboard refresh strategy (to preserve inccommand highlights):
+  - During typing: `CmdlineChanged` calls `refresh_dashboard()` directly (no fake keystroke)
+  - During toggles/initial populate: uses `trigger_cmdline_refresh()` with fake keystroke (space + backspace)
+- The fake keystroke uses `nvim_feedkeys(..., 'nt', true)` to behave like typed input for inccommand
 - The plugin auto-detects any substitute command (not just those started via `<leader>r`) to show the dashboard
+
+## Critical: Inccommand Compatibility
+
+**DO NOT BREAK THIS** - The plugin must coexist with Neovim's `inccommand` feature (live preview of substitutions).
+
+### The Problem
+
+When the dashboard refreshes, it can interfere with inccommand highlights. The naive approach of using fake keystrokes (space+backspace) to trigger `CmdlineChanged` on every keystroke causes inccommand to flicker and disappear.
+
+### The Solution (Two-Strategy Approach)
+
+1. **During typing** (`CmdlineChanged` autocmd in `dashboard.lua`):
+   - Call `refresh_dashboard()` directly - NO fake keystrokes
+   - This preserves inccommand highlights while user types
+
+2. **During toggles and initial populate** (`set_cmd_and_pos()` in `core.lua`, keymaps in `init.lua`):
+   - Use `trigger_cmdline_refresh()` which sends fake keystrokes
+   - This is acceptable because it's a one-time event, not continuous
+
+### Critical Implementation Details
+
+1. **`trigger_cmdline_refresh()` in `utils.lua`**:
+   - Must use `vim.api.nvim_feedkeys(..., 'nt', true)` - the `'t'` flag makes keys behave like typed input
+   - Without `'t'` flag, inccommand won't process the keystrokes properly
+   - The `true` for `escape_csi` is required
+
+2. **Cannot refresh during `<C-\>e` expression evaluation**:
+   - `set_cmd_and_pos()` is called during expression evaluation
+   - Cannot modify buffers/windows in this context (causes E565 error)
+   - Must use `vim.defer_fn()` to schedule the refresh after evaluation completes
+
+3. **Initial `<leader>r` needs explicit refresh**:
+   - The `populate_searchline()` function just returns the command string
+   - The keymap must call `trigger_cmdline_refresh()` after `feedkeys()` to trigger inccommand
+
+### Testing Checklist
+
+When modifying refresh logic, always verify:
+- [ ] Inccommand highlights appear on initial `<leader>r`
+- [ ] Inccommand highlights persist while typing in the substitute command
+- [ ] Inccommand highlights update after toggles (`<M-d>`, `<M-g>`, etc.)
+- [ ] Dashboard shows correct values after all operations
+- [ ] No E565 errors when using toggles
 
 ## Code Style
 

@@ -233,6 +233,8 @@
 local M = {}
 
 local core = require('search-replace.core')
+local utils = require('search-replace.utils')
+local dashboard = require('search-replace.dashboard')
 
 -- Default configuration (merged from config.lua)
 local defaults = {
@@ -297,6 +299,8 @@ local function setup_keymaps(keymap_config)
       local cmd, move_left = core.populate_searchline('n')
       local cursor_keys = string.rep(vim.keycode('<Left>'), move_left)
       vim.fn.feedkeys(':' .. cmd .. cursor_keys, 'n')
+      -- Trigger refresh to ensure inccommand highlights appear
+      utils.trigger_cmdline_refresh(dashboard.invalidate_cache)
     end, { desc = 'Search and replace word under cursor' })
 
     -- Visual mode mapping
@@ -304,6 +308,8 @@ local function setup_keymaps(keymap_config)
       local cmd, move_left = core.populate_searchline('v')
       local cursor_keys = string.rep(vim.keycode('<Left>'), move_left)
       vim.fn.feedkeys(':' .. vim.keycode('<C-u>') .. cmd .. cursor_keys, 'n')
+      -- Trigger refresh to ensure inccommand highlights appear
+      utils.trigger_cmdline_refresh(dashboard.invalidate_cache)
     end, { desc = 'Search and replace visual selection' })
   end
 
@@ -356,10 +362,7 @@ local function setup_keymaps(keymap_config)
 
   if keymap_config.toggle_dashboard then
     vim.keymap.set('c', keymap_config.toggle_dashboard, function()
-      local ok, dashboard = pcall(require, 'search-replace.dashboard')
-      if ok then
-        dashboard.toggle_dashboard()
-      end
+      dashboard.toggle_dashboard()
       return ''
     end, { expr = true, desc = 'Toggle search/replace dashboard' })
   end
@@ -383,7 +386,6 @@ function M.setup(opts)
 
   -- Setup dashboard if enabled
   if current_config.dashboard.enable then
-    local dashboard = require('search-replace.dashboard')
     dashboard.setup()
   end
 

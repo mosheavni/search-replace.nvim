@@ -592,8 +592,7 @@ function M.toggle_dashboard()
   if dashboard_state.hidden then
     -- Currently hidden, show it
     dashboard_state.hidden = false
-    M.invalidate_cache()
-    M.refresh_dashboard()
+    utils.trigger_cmdline_refresh(M.invalidate_cache)
   else
     -- Currently shown (or would be shown), hide it
     dashboard_state.hidden = true

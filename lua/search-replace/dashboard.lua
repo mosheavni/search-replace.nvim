@@ -43,12 +43,14 @@ local float_state = {
 ---@field ns_id integer? Namespace ID for highlights
 ---@field last_parsed ParsedCommand? Cache of last parsed command
 ---@field hidden boolean Track if user manually hid the dashboard
+---@field skip_count number Number of CmdlineChanged events to skip (from fake keystroke)
 
 ---@type DashboardState
 local dashboard_state = {
   ns_id = nil,
   last_parsed = nil,
   hidden = false,
+  skip_count = 0, -- Number of CmdlineChanged events to skip (from fake keystroke)
 }
 
 -- Float helpers (inlined from float.lua)
@@ -504,11 +506,6 @@ function M.refresh_dashboard(cmdline)
     return -- Not a substitute command
   end
 
-  -- Check if command changed (optimization)
-  if dashboard_state.last_parsed and dashboard_state.last_parsed.raw == parsed.raw then
-    return -- No change, skip refresh
-  end
-
   dashboard_state.last_parsed = parsed
 
   -- Build content
@@ -568,7 +565,7 @@ function M.refresh_dashboard(cmdline)
     vim.api.nvim_win_set_config(win_id, new_config)
   end
 
-  -- CRUCIAL: Force redraw
+  -- Force redraw to update floating window
   vim.cmd('redraw')
 
   -- Update cache
@@ -627,20 +624,32 @@ function M.setup()
       end
 
       local cmdline = vim.fn.getcmdline()
+
       -- Quick check: does it look like a substitute command?
       if not utils.is_substitute_cmd(cmdline) then
         -- Not a substitute command - always clear cache and close dashboard if open
         dashboard_state.last_parsed = nil
+        dashboard_state.skip_count = 0
         if is_valid_win(float_state.win_id) and is_win_in_tabpage(float_state.win_id) then
           M.close_dashboard()
         end
         return
       end
 
-      -- It's a substitute command - refresh dashboard directly
-      -- Note: We avoid the fake keystroke technique here because it interferes
-      -- with Neovim's inccommand preview (causes flickering)
-      M.refresh_dashboard()
+      -- Handle fake keystroke events
+      if dashboard_state.skip_count > 0 then
+        dashboard_state.skip_count = dashboard_state.skip_count - 1
+        if dashboard_state.skip_count == 0 then
+          -- Fake keystroke complete, now refresh
+          M.refresh_dashboard(cmdline)
+        end
+        return
+      end
+
+      -- Real user change - trigger fake keystroke to force proper redraw
+      -- Set skip_count to 2 (one for space, one for backspace)
+      dashboard_state.skip_count = 2
+      utils.trigger_cmdline_refresh()
     end,
   })
 

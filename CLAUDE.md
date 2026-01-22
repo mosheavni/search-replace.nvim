@@ -69,29 +69,47 @@ The plugin follows a modular architecture with four main components:
 
 - Toggle functions return expression strings that Neovim evaluates (using `{ expr = true }` in keymap)
 - The `<C-\>e` pattern allows replacing the entire command line via expression evaluation
-- Dashboard refresh strategy (to preserve inccommand highlights):
-  - During typing: `CmdlineChanged` calls `refresh_dashboard()` directly (no fake keystroke)
-  - During toggles/initial populate: uses `trigger_cmdline_refresh()` with fake keystroke (space + backspace)
 - The fake keystroke uses `nvim_feedkeys(..., 'nt', true)` to behave like typed input for inccommand
 - The plugin auto-detects any substitute command (not just those started via `<leader>r`) to show the dashboard
 
-## Critical: Inccommand Compatibility
+## Critical: Floating Window Redraw During Cmdline Mode
 
-**DO NOT BREAK THIS** - The plugin must coexist with Neovim's `inccommand` feature (live preview of substitutions).
+**DO NOT BREAK THIS** - The dashboard must update correctly while the user types in cmdline mode.
 
 ### The Problem
 
-When the dashboard refreshes, it can interfere with inccommand highlights. The naive approach of using fake keystrokes (space+backspace) to trigger `CmdlineChanged` on every keystroke causes inccommand to flicker and disappear.
+When `CmdlineChanged` fires, `vim.fn.getcmdline()` returns the correct value and we correctly update the buffer content. However, **the floating window doesn't visually redraw** to show the new buffer content. Neither `vim.cmd('redraw')` nor `vim.cmd('redraw!')` work during cmdline mode.
 
-### The Solution (Two-Strategy Approach)
+### The Solution: Fake Keystrokes with Skip Counter
 
-1. **During typing** (`CmdlineChanged` autocmd in `dashboard.lua`):
-   - Call `refresh_dashboard()` directly - NO fake keystrokes
-   - This preserves inccommand highlights while user types
+The only way to force a proper visual refresh of floating windows during cmdline mode is to send fake keystrokes (space + backspace) via `trigger_cmdline_refresh()`. This triggers Neovim's internal redraw mechanism.
 
-2. **During toggles and initial populate** (`set_cmd_and_pos()` in `core.lua`, keymaps in `init.lua`):
-   - Use `trigger_cmdline_refresh()` which sends fake keystrokes
-   - This is acceptable because it's a one-time event, not continuous
+However, fake keystrokes cause **two** `CmdlineChanged` events (one for space, one for backspace), which would create an infinite loop without proper handling.
+
+### The skip_count Mechanism
+
+The `dashboard_state.skip_count` counter prevents infinite loops:
+
+```lua
+-- In CmdlineChanged callback:
+if dashboard_state.skip_count > 0 then
+  dashboard_state.skip_count = dashboard_state.skip_count - 1
+  if dashboard_state.skip_count == 0 then
+    -- Fake keystroke sequence complete, now refresh
+    M.refresh_dashboard(cmdline)
+  end
+  return  -- Skip processing for fake keystroke events
+end
+
+-- Real user change - trigger fake keystroke
+dashboard_state.skip_count = 2  -- Skip next 2 events (space + backspace)
+utils.trigger_cmdline_refresh()
+```
+
+**Flow:**
+1. User types → `skip_count=0` → set to 2, trigger fake keystroke
+2. Space added → `CmdlineChanged` → `skip_count=2` → decrement to 1, skip
+3. Backspace → `CmdlineChanged` → `skip_count=1` → decrement to 0, refresh dashboard
 
 ### Critical Implementation Details
 
@@ -99,6 +117,7 @@ When the dashboard refreshes, it can interfere with inccommand highlights. The n
    - Must use `vim.api.nvim_feedkeys(..., 'nt', true)` - the `'t'` flag makes keys behave like typed input
    - Without `'t'` flag, inccommand won't process the keystrokes properly
    - The `true` for `escape_csi` is required
+   - Uses `vim.defer_fn(..., 10)` to schedule after current event processing
 
 2. **Cannot refresh during `<C-\>e` expression evaluation**:
    - `set_cmd_and_pos()` is called during expression evaluation
@@ -115,8 +134,10 @@ When modifying refresh logic, always verify:
 - [ ] Inccommand highlights appear on initial `<leader>r`
 - [ ] Inccommand highlights persist while typing in the substitute command
 - [ ] Inccommand highlights update after toggles (`<M-d>`, `<M-g>`, etc.)
-- [ ] Dashboard shows correct values after all operations
+- [ ] Dashboard shows correct values after all operations (no stale state)
 - [ ] No E565 errors when using toggles
+- [ ] No infinite loops or heavy flickering
+- [ ] No 1-second delays on keystrokes
 
 ## Code Style
 

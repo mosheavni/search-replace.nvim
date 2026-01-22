@@ -1,0 +1,346 @@
+================================================================================
+                    SEARCH-REPLACE.NVIM INTERACTIVE DEMO
+================================================================================
+
+Welcome! This file is an interactive tutorial for search-replace.nvim.
+Follow the instructions to learn each feature. Make sure you have:
+  - The plugin installed and configured
+  - `vim.o.inccommand = 'split'` for live preview (highly recommended!)
+
+--------------------------------------------------------------------------------
+SECTION 1: BASIC USAGE - Getting Started with <leader>r
+--------------------------------------------------------------------------------
+
+Let's start simple. Place your cursor on the word "apple" below and press
+<leader>r to trigger a search-replace command:
+
+    I have an apple in my bag. The apple is red. This apple tastes great.
+
+What you should see:
+  - The command line populates with: .,$s/\Vapple/apple/gc
+  - A floating dashboard appears showing the current state
+  - Your cursor is positioned on the replace term (the second "apple")
+
+Now type a replacement like "orange" and press Enter to execute!
+
+Try again with different words:
+
+    The cat sat on the mat. The cat was fat. That cat napped.
+
+
+--------------------------------------------------------------------------------
+SECTION 2: THE 'g' FLAG - Global vs First Match Only
+--------------------------------------------------------------------------------
+
+The 'g' (global) flag controls whether ALL matches on a line are replaced,
+or just the FIRST match.
+
+PUT YOUR CURSOR HERE --> error
+
+    error: something went wrong. error: another issue. error: fix this!
+    error: line two has errors. error: so many errors!
+
+Instructions:
+  1. Place cursor on "error" above and press <leader>r
+  2. Notice the 'g' flag is ON by default (dashboard shows it active)
+  3. Look at the preview - ALL "error" words on each line are highlighted
+  4. Press <M-g> (Alt+g) to TOGGLE OFF the 'g' flag
+  5. Now look - only the FIRST "error" on each line is highlighted!
+  6. Press <M-g> again to toggle it back ON
+  7. Press Escape to cancel when done experimenting
+
+This is useful when you only want to change the first occurrence per line.
+
+
+--------------------------------------------------------------------------------
+SECTION 3: THE 'c' FLAG - Confirm Each Replacement
+--------------------------------------------------------------------------------
+
+The 'c' (confirm) flag asks you before each replacement: y/n/a/q/l
+
+PUT YOUR CURSOR HERE --> foo
+
+    foo bar foo baz foo qux
+    foo is here foo is there foo foo foo
+    another foo and one more foo
+
+Instructions:
+  1. Place cursor on "foo" and press <leader>r
+  2. The 'c' flag should be ON by default (check the dashboard)
+  3. Type "FOO" as replacement and press Enter
+  4. Vim will highlight each match and ask: replace with FOO (y/n/a/q/l)?
+     - y = yes, replace this one
+     - n = no, skip this one
+     - a = all, replace all remaining without asking
+     - q = quit, stop replacing
+     - l = last, replace this one and quit
+  5. Press <M-c> during command editing to toggle this flag off for bulk replace
+
+
+--------------------------------------------------------------------------------
+SECTION 4: THE 'i' FLAG - Case Insensitive Search
+--------------------------------------------------------------------------------
+
+The 'i' flag makes the search case-insensitive.
+
+PUT YOUR CURSOR HERE --> Hello
+
+    Hello world! hello there. HELLO everyone. HeLLo stranger.
+    Say hello to Hello and HELLO.
+
+Instructions:
+  1. Place cursor on "Hello" and press <leader>r
+  2. Initially, only exact case matches ("Hello") are highlighted
+  3. Press <M-i> (Alt+i) to toggle case-insensitive mode
+  4. Now ALL variations (Hello, hello, HELLO, HeLLo) are highlighted!
+  5. Type "Hi" and see how all case variations would be replaced
+
+
+--------------------------------------------------------------------------------
+SECTION 5: THE RANGE - <M-5> to Cycle Through Ranges
+--------------------------------------------------------------------------------
+
+The range determines WHICH LINES are affected by the substitution.
+
+PUT YOUR CURSOR ON LINE 3 (the "banana" line) below:
+
+    Line 1: apple fruit apple
+    Line 2: apple vegetable apple
+    Line 3: banana fruit banana   <-- PUT CURSOR HERE ON "banana"
+    Line 4: banana vegetable banana
+    Line 5: banana dessert banana
+    Line 6: cherry fruit cherry
+
+Instructions:
+  1. Place cursor on "banana" in Line 3 and press <leader>r
+  2. Default range is ".,$s" (from cursor line to end of file)
+     - Lines 3, 4, 5 are highlighted (cursor to end)
+  3. Press <M-5> (Alt+5) to cycle to next range: "0,.s"
+     - Now Lines 1, 2, 3 are affected (start to cursor line)
+  4. Press <M-5> again to cycle to: "%s"
+     - Now ALL lines (1-6) are affected (whole file)
+  5. Press <M-5> again to return to ".,$s"
+
+The range cycle is:  .,$s  -->  0,.s  -->  %s  -->  .,$s  (repeats)
+
+
+--------------------------------------------------------------------------------
+SECTION 6: THE SEPARATOR - <M-/> to Cycle Through Separators
+--------------------------------------------------------------------------------
+
+The separator character divides the search/replace/flags parts.
+Useful when your search term contains the default '/' character!
+
+IMPORTANT: For paths with slashes, you must VISUALLY SELECT the text first!
+(In normal mode, <leader>r uses cword which stops at '/')
+
+    /path/to/file is the source /path/to/file destination
+    the /path/to/file needs updating
+
+Instructions:
+  1. Use visual mode (v) to select "/path/to/file" in the line above
+  2. Press <leader>r
+  3. Notice the plugin automatically chose a different separator (not '/')
+     because your search term contains '/'
+  4. Press <M-/> (Alt+/) to cycle through separators
+     - The plugin SKIPS separators that appear in your search/replace terms!
+     - So if your search contains '/', pressing <M-/> will skip to the next
+       valid separator (like '?' or '#')
+  5. The dashboard shows which separator is currently active
+
+Another example with URLs (also requires visual selection):
+
+    Visit https://example.com/page for more info
+    The URL https://example.com/page is deprecated
+
+Instructions:
+  1. Visually select "https://example.com/page" above
+  2. Press <leader>r
+  3. Notice it picked a separator that's not in the URL (probably '?')
+  4. Cycle with <M-/> - it will skip '/', ':', and any other chars in the URL
+
+
+--------------------------------------------------------------------------------
+SECTION 7: MAGIC MODES - <M-m> to Cycle Through Regex Modes
+--------------------------------------------------------------------------------
+
+Magic modes control how special characters are interpreted in patterns.
+
+PUT YOUR CURSOR HERE --> file.txt
+
+    file.txt is a filename. filetxt is not. file-txt neither.
+    another file.txt here and file.txt there
+
+Instructions:
+  1. Place cursor on "file.txt" and press <leader>r
+  2. Default is \V (very nomagic) - the dot is LITERAL
+     - Only "file.txt" matches (the dot matches a literal dot)
+  3. Press <M-m> to cycle to next magic mode
+  4. Watch how the matches change based on the mode:
+
+     \V (very nomagic) - Only backslash is special. Dots are literal.
+     \v (very magic)   - Most chars are special. Dot matches ANY char!
+     \m (magic)        - Standard Vim regex
+     \M (nomagic)      - Only ^ and $ are special
+
+  5. With \v, "file.txt" would also match "file-txt", "filetxt", etc.
+
+Try with regex-heavy text:
+
+PUT YOUR CURSOR HERE --> [test]
+
+    This is a [test] of brackets. Another [test] here.
+    Not a test without brackets.
+
+
+--------------------------------------------------------------------------------
+SECTION 8: TOGGLE REPLACE TERM - <M-d> to Clear/Restore
+--------------------------------------------------------------------------------
+
+Quickly clear the replace term (to delete matches) or restore it.
+
+PUT YOUR CURSOR HERE --> DELETE_ME
+
+    Keep this DELETE_ME text and this DELETE_ME too
+    More DELETE_ME words DELETE_ME everywhere
+
+Instructions:
+  1. Place cursor on "DELETE_ME" and press <leader>r
+  2. The replace term starts as "DELETE_ME" (same as search)
+  3. Press <M-d> (Alt+d) to CLEAR the replace term
+     - Now it shows empty replacement (will DELETE the matches)
+  4. Press <M-d> again to RESTORE the original word
+  5. Useful for quickly toggling between rename and delete operations
+
+
+--------------------------------------------------------------------------------
+SECTION 9: TOGGLE DASHBOARD - <M-h> to Show/Hide
+--------------------------------------------------------------------------------
+
+The floating dashboard shows current state but you can hide it if needed.
+
+PUT YOUR CURSOR HERE --> dashboard
+
+    This dashboard example shows the dashboard feature
+    The dashboard is helpful but dashboard can be hidden
+
+Instructions:
+  1. Place cursor on "dashboard" and press <leader>r
+  2. The floating dashboard appears showing:
+     - Current flags (g, c, i) and their states
+     - Current range, separator, magic mode
+  3. Press <M-h> (Alt+h) to HIDE the dashboard
+  4. Press <M-h> again to SHOW it again
+  5. Useful if the dashboard obscures text you need to see
+
+
+--------------------------------------------------------------------------------
+SECTION 10: VISUAL MODE - Replace Selected Text
+--------------------------------------------------------------------------------
+
+You can also select text visually before pressing <leader>r.
+
+Instructions:
+  1. Use visual mode (v) to select "multi word phrase" below
+  2. Press <leader>r
+  3. The selected text becomes the search term!
+
+    This multi word phrase is special. I love this multi word phrase.
+    Another multi word phrase appears here.
+
+Try selecting different amounts of text:
+
+    The quick brown fox jumps over the lazy dog.
+    Another quick brown fox was seen near the lazy dog.
+
+
+--------------------------------------------------------------------------------
+SECTION 11: COMBINING FEATURES - Real World Examples
+--------------------------------------------------------------------------------
+
+EXAMPLE A: Rename a variable (case sensitive, confirm each)
+
+PUT YOUR CURSOR HERE --> userId
+
+    const userId = getUserId();
+    if (userId) {
+      console.log(userId);
+      return userId;
+    }
+
+Steps: <leader>r, type "customerId", keep 'c' flag on, Enter, confirm each
+
+
+EXAMPLE B: Delete all occurrences of a debug statement
+
+PUT YOUR CURSOR HERE --> console.log
+
+    function test() {
+      console.log("debug 1");
+      doSomething();
+      console.log("debug 2");
+      doMore();
+      console.log("debug 3");
+    }
+
+Steps: <leader>r, <M-5> for whole file, <M-d> to clear replacement, Enter
+
+
+EXAMPLE C: Replace URL paths (needs different separator)
+
+PUT YOUR CURSOR HERE --> /api/v1/
+
+    fetch('/api/v1/users')
+    fetch('/api/v1/posts')
+    fetch('/api/v1/comments')
+
+Steps: <leader>r (separator auto-chosen), type "/api/v2/", Enter
+
+
+EXAMPLE D: Find function calls with regex
+
+PUT YOUR CURSOR HERE --> getData(
+
+    result = getData(id)
+    other = getData(userId)
+    more = getData(customerId)
+
+Steps: <leader>r, <M-m> to \v for regex, modify pattern, Enter
+
+
+================================================================================
+                              QUICK REFERENCE
+================================================================================
+
+TRIGGER:
+  <leader>r     Start search-replace (normal or visual mode)
+
+DURING COMMAND EDITING:
+  <M-g>         Toggle 'g' flag (global: all matches vs first per line)
+  <M-c>         Toggle 'c' flag (confirm each replacement)
+  <M-i>         Toggle 'i' flag (case insensitive)
+  <M-d>         Toggle replace term (clear/restore original)
+  <M-5>         Cycle range (.,$s -> 0,.s -> %s -> .,$s)
+  <M-/>         Cycle separator (/ -> ? -> # -> : -> @ -> /)
+  <M-m>         Cycle magic (\v -> \m -> \M -> \V -> none -> \v)
+  <M-h>         Toggle dashboard visibility
+
+RANGES EXPLAINED:
+  .,$s          From cursor line to end of file
+  0,.s          From start of file to cursor line
+  %s            Entire file
+
+MAGIC MODES:
+  \V            Very nomagic - literal search (default, safest)
+  \v            Very magic - Perl-like regex
+  \m            Magic - standard Vim regex
+  \M            Nomagic - only ^ and $ are special
+  (none)        No magic prefix
+
+================================================================================
+                           END OF INTERACTIVE DEMO
+================================================================================
+
+Tip: Keep this file open as a reference while using the plugin!
+Tip: Set `vim.o.inccommand = 'split'` for the best experience!
+

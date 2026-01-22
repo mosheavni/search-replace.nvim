@@ -88,6 +88,48 @@
 ---highlighted in the buffer and a split window showing off-screen changes.
 ---@brief ]]
 
+---@mod search-replace.demo Interactive Demo
+---@brief [[
+---The plugin includes an interactive demo file to help you learn all features.
+---
+---Location: `demo/interactive_demo.txt` in the plugin directory.
+---
+---The demo covers:
+---- Basic usage with `<leader>r`
+---- The 'g' flag (global vs first match per line)
+---- The 'c' flag (confirm each replacement)
+---- The 'i' flag (case insensitive search)
+---- Range cycling with `<M-5>` (cursor-to-end, start-to-cursor, whole file)
+---- Separator cycling with `<M-/>` (useful for paths/URLs)
+---- Magic modes with `<M-m>` (literal vs regex matching)
+---- Toggle replace term with `<M-d>` (for delete operations)
+---- Dashboard visibility with `<M-h>`
+---- Visual mode selections
+---- Real-world examples combining multiple features
+---
+---To use the demo:
+---1. Open the demo file in Neovim
+---2. Follow the step-by-step instructions in each section
+---3. Place your cursor where indicated and try the keymaps
+---4. Observe the live preview with `vim.o.inccommand = 'split'`
+---
+---Quick reference (available at the end of the demo file):
+--->
+---    TRIGGER:
+---      <leader>r     Start search-replace (normal or visual mode)
+---
+---    DURING COMMAND EDITING:
+---      <M-g>         Toggle 'g' flag (global)
+---      <M-c>         Toggle 'c' flag (confirm)
+---      <M-i>         Toggle 'i' flag (case insensitive)
+---      <M-d>         Toggle replace term (clear/restore)
+---      <M-5>         Cycle range (.,$s -> 0,.s -> %s)
+---      <M-/>         Cycle separator (/ -> ? -> # -> : -> @)
+---      <M-m>         Cycle magic mode (\v -> \m -> \M -> \V -> none)
+---      <M-h>         Toggle dashboard visibility
+---<
+---@brief ]]
+
 ---@mod search-replace.config Configuration
 ---@brief [[
 ---Full default configuration with all available options:

@@ -155,6 +155,30 @@ Vim's magic modes control how special characters are interpreted in patterns:
 
 The plugin defaults to `\V` (very nomagic) for literal searching.
 
+## Interactive Demo
+
+The plugin includes an interactive demo file to help you learn all features hands-on.
+
+**Location:** `demo/interactive_demo.txt` in the plugin directory.
+
+The demo covers all features with step-by-step instructions:
+
+- Basic usage with `<leader>r`
+- Flag toggles (`g`, `c`, `i`) and when to use each
+- Range cycling - see how different ranges affect which lines are modified
+- Separator cycling - essential for search terms containing `/`
+- Magic modes - understand literal vs regex matching
+- Replace term toggle - quickly switch between rename and delete
+- Visual mode selections
+- Real-world examples combining multiple features
+
+**To use the demo:**
+
+1. Open the file: `:e ~/.local/share/nvim/lazy/search-replace.nvim/demo/interactive_demo.txt`
+   (adjust path based on your plugin manager)
+2. Enable live preview: `:set inccommand=split`
+3. Follow the instructions in each section
+
 ## Tips
 
 For the best experience, enable Neovim's built-in incremental command preview:

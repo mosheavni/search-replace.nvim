@@ -76,13 +76,36 @@ end
 function M.set_cmd_and_pos()
   vim.fn.setcmdpos(sar_state.cursor_pos)
 
-  -- Trigger dashboard refresh by invalidating cache and simulating a keystroke
+  -- Invalidate dashboard cache so the CmdlineChanged autocmd will refresh it
+  -- Note: We don't use trigger_cmdline_refresh() here because it interferes
+  -- with Neovim's inccommand preview. The CmdlineChanged event will fire
+  -- automatically when the command line changes after this function returns.
   local ok, dashboard = pcall(require, 'search-replace.dashboard')
   if ok and dashboard and dashboard.invalidate_cache then
-    utils.trigger_cmdline_refresh(dashboard.invalidate_cache)
+    dashboard.invalidate_cache()
   end
 
   return sar_state.new_cmd
+end
+
+---Get parts from current command line using proper parsing
+---@param sep string The separator character
+---@return string[] parts The command parts [range, search, replace, flags]
+local function get_cmd_parts(sep)
+  local cmdline = vim.fn.getcmdline()
+  local parsed = utils.parse_substitute_cmd(cmdline)
+
+  if parsed then
+    -- Use properly parsed components
+    return { parsed.range, parsed.search, parsed.replace, parsed.flags }
+  end
+
+  -- Fallback: split by separator respecting escapes
+  local after_range = cmdline:match('^([%%.,0-9$]*s)') or ''
+  local rest = cmdline:sub(#after_range + 2) -- +2 to skip past separator
+  local split_parts = utils.split_by_separator(rest, sep)
+
+  return utils.normalize_parts({ after_range, split_parts[1] or '', split_parts[2] or '', split_parts[3] or '' })
 end
 
 ---Apply a toggle transformation to the current command
@@ -94,7 +117,7 @@ local function apply_toggle(transform_fn)
   end
 
   local sep = get_current_sep()
-  local parts = utils.normalize_parts(vim.split(vim.fn.getcmdline(), sep, { plain = true }))
+  local parts = get_cmd_parts(sep)
 
   local new_parts, new_sep = transform_fn(parts, sep)
   local new_cmd = table.concat(new_parts, new_sep)
@@ -192,7 +215,10 @@ end
 
 function M.toggle_separator()
   return apply_toggle(function(parts, old_sep)
-    -- Find next separator
+    local search = parts[2]
+    local replace = parts[3]
+
+    -- Find current separator index
     local idx = 0
     for i, c in ipairs(config.separators) do
       if c == old_sep then
@@ -200,7 +226,21 @@ function M.toggle_separator()
         break
       end
     end
-    local new_sep = config.separators[(idx % #config.separators) + 1]
+
+    -- Find next valid separator (one that doesn't appear in search or replace)
+    local new_sep = old_sep
+    for _ = 1, #config.separators do
+      idx = (idx % #config.separators) + 1
+      local candidate = config.separators[idx]
+      -- Check if candidate appears in search or replace (plain text search)
+      local in_search = search:find(candidate, 1, true)
+      local in_replace = replace:find(candidate, 1, true)
+      if not in_search and not in_replace then
+        new_sep = candidate
+        break
+      end
+    end
+
     sar_state.sep = new_sep
     return parts, new_sep
   end)

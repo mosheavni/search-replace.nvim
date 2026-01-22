@@ -51,14 +51,6 @@ local dashboard_state = {
   hidden = false,
 }
 
----@class RefreshState
----@field last_fake_keystroke_time integer Timestamp of last fake keystroke
-
----@type RefreshState
-local refresh_state = {
-  last_fake_keystroke_time = 0,
-}
-
 -- Float helpers (inlined from float.lua)
 
 ---Check if buffer is valid
@@ -600,7 +592,8 @@ function M.toggle_dashboard()
   if dashboard_state.hidden then
     -- Currently hidden, show it
     dashboard_state.hidden = false
-    utils.trigger_cmdline_refresh(M.invalidate_cache)
+    M.invalidate_cache()
+    M.refresh_dashboard()
   else
     -- Currently shown (or would be shown), hide it
     dashboard_state.hidden = true
@@ -645,17 +638,10 @@ function M.setup()
         return
       end
 
-      -- It's a substitute command - refresh dashboard
-      local now = vim.loop.now()
-      -- Check if we recently triggered a fake keystroke (to prevent infinite loop)
-      if now - refresh_state.last_fake_keystroke_time < 100 then
-        -- We're in a fake keystroke cycle, just refresh normally
-        M.refresh_dashboard()
-      else
-        -- Trigger fake keystroke for proper refresh
-        refresh_state.last_fake_keystroke_time = now
-        utils.trigger_cmdline_refresh(M.invalidate_cache)
-      end
+      -- It's a substitute command - refresh dashboard directly
+      -- Note: We avoid the fake keystroke technique here because it interferes
+      -- with Neovim's inccommand preview (causes flickering)
+      M.refresh_dashboard()
     end,
   })
 

@@ -27,7 +27,8 @@
 local M = {}
 
 ---@type string
-M.SUBSTITUTE_PATTERN = '^[%%.,0-9$]*s.'
+-- Requires a non-alphanumeric, non-whitespace separator after 's' to avoid matching :set, :sort, etc.
+M.SUBSTITUTE_PATTERN = '^[%%.,0-9$]*s[^%w%s]'
 ---@type string
 M.MAGIC_PATTERN = '^(\\[vmMV])'
 

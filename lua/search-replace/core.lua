@@ -268,7 +268,8 @@ function M.toggle_magic()
   end)
 end
 
-function M.setup(opts)
+---@private
+function M._init(opts)
   config = opts
   vim.api.nvim_create_autocmd('CmdlineLeave', {
     pattern = ':',

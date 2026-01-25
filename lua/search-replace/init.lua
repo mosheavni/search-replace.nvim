@@ -375,7 +375,7 @@ function M.setup(opts)
   current_config = vim.tbl_deep_extend('force', vim.deepcopy(defaults), opts or {})
 
   -- Setup core module
-  core.setup({
+  core._init({
     separators = current_config.separators,
     magic_modes = current_config.magic_modes,
     flags = current_config.flags,

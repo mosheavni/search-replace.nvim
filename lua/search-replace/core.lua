@@ -1,4 +1,4 @@
----@mod search-replace.api API
+---@mod search_replace API
 ---@brief [[
 ---The plugin exports the following functions via `require('search-replace')`:
 ---
@@ -69,10 +69,20 @@ local function find_unique_char(char_list, str)
   return ''
 end
 
+---Check if search-replace mode is active
+---
+---Returns true when the user has initiated a search-replace session via the
+---populate keymap (e.g., `<leader>r`). This is useful for conditional logic
+---in custom keymaps or scripts.
+---@return boolean active True if search-replace mode is active
 function M.is_active()
   return sar_state.active
 end
 
+---@private
+---Set the command line text and cursor position
+---Used internally by toggle functions via expression evaluation
+---@return string cmd The new command line text
 function M.set_cmd_and_pos()
   vim.fn.setcmdpos(sar_state.cursor_pos)
 
@@ -128,6 +138,14 @@ local function apply_toggle(transform_fn)
     .. vim.keycode('<CR>')
 end
 
+---Populate the command line with a substitute command
+---
+---Builds a substitute command using the word under cursor (normal mode) or
+---visual selection (visual mode). The command uses the configured default
+---range, flags, and magic mode.
+---@param mode string Mode: 'n' for normal mode, 'v' for visual mode
+---@return string cmd The substitute command string
+---@return integer move_left Number of characters to move cursor left (to position at end of replace term)
 function M.populate_searchline(mode)
   -- Get word under cursor or visual selection
   if mode == 'n' then
@@ -159,6 +177,12 @@ function M.populate_searchline(mode)
   return cmd, chars_to_move_left
 end
 
+---Toggle a flag character in the substitute command
+---
+---Adds or removes a flag ('g', 'c', or 'i') from the current substitute command.
+---Flags are maintained in a consistent order as defined in configuration.
+---@param char string The flag character to toggle ('g', 'c', or 'i')
+---@return string keystrokes Keystroke sequence for expression mapping
 function M.toggle_char(char)
   return apply_toggle(function(parts, sep)
     local flags = parts[4]
@@ -182,6 +206,12 @@ function M.toggle_char(char)
   end)
 end
 
+---Toggle the replace term between empty and original word
+---
+---Clears the replace term (for delete operations) or restores it to the
+---original word under cursor. Useful for quickly switching between
+---replace and delete operations.
+---@return string keystrokes Keystroke sequence for expression mapping
 function M.toggle_replace_term()
   return apply_toggle(function(parts, sep)
     -- Use stored cword if in active mode, otherwise use search term or empty
@@ -193,6 +223,11 @@ function M.toggle_replace_term()
   end)
 end
 
+---Cycle through range options for the substitute command
+---
+---Cycles through: `%s` (whole file) -> `.,$s` (cursor to end) ->
+---`0,.s` (start to cursor) -> `%s` (whole file)
+---@return string keystrokes Keystroke sequence for expression mapping
 function M.toggle_all_file()
   return apply_toggle(function(parts, sep)
     local range = parts[1]
@@ -211,6 +246,12 @@ function M.toggle_all_file()
   end)
 end
 
+---Cycle through separator characters for the substitute command
+---
+---Cycles through configured separators (default: `/`, `?`, `#`, `:`, `@`).
+---Automatically skips separators that appear in the search or replace terms.
+---Useful when dealing with paths or URLs that contain `/`.
+---@return string keystrokes Keystroke sequence for expression mapping
 function M.toggle_separator()
   return apply_toggle(function(parts, old_sep)
     local search = parts[2]
@@ -244,6 +285,12 @@ function M.toggle_separator()
   end)
 end
 
+---Cycle through magic modes for pattern matching
+---
+---Cycles through: `\v` (very magic) -> `\m` (magic) -> `\M` (nomagic) ->
+---`\V` (very nomagic/literal) -> none -> `\v`
+---See |/magic| for details on each mode.
+---@return string keystrokes Keystroke sequence for expression mapping
 function M.toggle_magic()
   return apply_toggle(function(parts, sep)
     -- Get current magic mode from the search pattern

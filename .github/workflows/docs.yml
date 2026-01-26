@@ -19,14 +19,26 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Download lemmy-help
-        run: |
-          curl -Lq https://github.com/numToStr/lemmy-help/releases/latest/download/lemmy-help-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          chmod +x lemmy-help
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-vimcats-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-vimcats-
+
+      - name: Install vimcats
+        run: cargo install vimcats --features=cli
 
       - name: Generate vimdoc
         run: |
-          ./lemmy-help -c \
+          vimcats -c -f \
             lua/search-replace/init.lua \
             lua/search-replace/core.lua \
             > doc/search-replace.txt

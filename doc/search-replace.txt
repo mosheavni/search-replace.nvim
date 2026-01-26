@@ -1,17 +1,16 @@
 ==============================================================================
-Table of Contents                                      *search-replace.contents*
+Table of Contents                                      *search_replace.contents*
 
-Introduction ············································· |search-replace.nvim|
-Installation ····································· |search-replace.installation|
-Default Keymaps ······································· |search-replace.keymaps|
-Magic Modes ············································· |search-replace.magic|
-Tips ····················································· |search-replace.tips|
-Interactive Demo ········································· |search-replace.demo|
-Configuration ·········································· |search-replace.config|
-API ······················································· |search-replace.api|
+Introduction ············································· |search_replace.nvim|
+Default Keymaps ······································· |search_replace.keymaps|
+Magic Modes ············································· |search_replace.magic|
+Tips ····················································· |search_replace.tips|
+Interactive Demo ········································· |search_replace.demo|
+Configuration ·········································· |search_replace.config|
+API ··························································· |search_replace|
 
 ==============================================================================
-Introduction                                               *search-replace.nvim*
+Introduction                                               *search_replace.nvim*
 
 search-replace.nvim is a Neovim plugin for enhanced search and replace with
 a floating dashboard.
@@ -24,38 +23,7 @@ Features:
 - Auto-detect any substitute command to show the dashboard
 
 ==============================================================================
-Installation                                       *search-replace.installation*
-
-lazy.nvim:
->lua
-    {
-      'mosheavni/search-replace.nvim',
-      config = function()
-        require('search-replace').setup()
-      end,
-    }
-<
-
-packer.nvim:
->lua
-    use({
-      'mosheavni/search-replace.nvim',
-      config = function()
-        require('search-replace').setup()
-      end,
-    })
-<
-
-vim-plug:
->vim
-    Plug 'mosheavni/search-replace.nvim'
-
-    " In your init.lua or after/plugin:
-    lua require('search-replace').setup()
-<
-
-==============================================================================
-Default Keymaps                                         *search-replace.keymaps*
+Default Keymaps                                         *search_replace.keymaps*
 
 Normal/Visual Mode:
   `<leader>r` - Populate command line with search-replace using word under
@@ -75,7 +43,7 @@ Note: `<M-...>` means Alt/Meta key. On macOS, you may need to configure
 your terminal to send Meta key properly.
 
 ==============================================================================
-Magic Modes                                               *search-replace.magic*
+Magic Modes                                               *search_replace.magic*
 
 Vim's magic modes control how special characters are interpreted in patterns:
 
@@ -87,8 +55,10 @@ Vim's magic modes control how special characters are interpreted in patterns:
 The plugin defaults to `\V` (very nomagic) for literal searching, which is
 often what you want when replacing exact text.
 
+See |/magic| for more details.
+
 ==============================================================================
-Tips                                                       *search-replace.tips*
+Tips                                                       *search_replace.tips*
 
 For the best experience, enable Neovim's built-in incremental command preview:
 >lua
@@ -98,8 +68,10 @@ For the best experience, enable Neovim's built-in incremental command preview:
 This shows a live preview of your substitutions as you type, with matches
 highlighted in the buffer and a split window showing off-screen changes.
 
+See |'inccommand'| for more details.
+
 ==============================================================================
-Interactive Demo                                           *search-replace.demo*
+Interactive Demo                                           *search_replace.demo*
 
 The plugin includes an interactive demo file to help you learn all features.
 
@@ -141,7 +113,7 @@ Quick reference (available at the end of the demo file):
 <
 
 ==============================================================================
-Configuration                                            *search-replace.config*
+Configuration                                            *search_replace.config*
 
 Full default configuration with all available options:
 >lua
@@ -188,7 +160,7 @@ Full default configuration with all available options:
     })
 <
 
-                               *search-replace.config.SearchReplaceKeymapConfig*
+                               *search_replace.config.SearchReplaceKeymapConfig*
 SearchReplaceKeymapConfig
 
     Fields: ~
@@ -204,7 +176,7 @@ SearchReplaceKeymapConfig
         {toggle_dashboard?}  (string)   Keymap to toggle dashboard
 
 
-                           *search-replace.config.SearchReplaceDashboardSymbols*
+                           *search_replace.config.SearchReplaceDashboardSymbols*
 SearchReplaceDashboardSymbols
 
     Fields: ~
@@ -212,7 +184,7 @@ SearchReplaceDashboardSymbols
         {inactive}  (string)  Symbol for inactive flag indicator
 
 
-                        *search-replace.config.SearchReplaceDashboardHighlights*
+                        *search_replace.config.SearchReplaceDashboardHighlights*
 SearchReplaceDashboardHighlights
 
     Fields: ~
@@ -227,21 +199,21 @@ SearchReplaceDashboardHighlights
         {status_value}        (string)  Highlight group for status value
 
 
-                            *search-replace.config.SearchReplaceDashboardConfig*
+                            *search_replace.config.SearchReplaceDashboardConfig*
 SearchReplaceDashboardConfig
 
     Fields: ~
         {enable}      (boolean)                           Whether to enable the dashboard
-        {symbols}     (SearchReplaceDashboardSymbols)     Visual symbols configuration
-        {highlights}  (SearchReplaceDashboardHighlights)  Highlight groups configuration
+        {symbols}     (SearchReplaceDashboardSymbols)     Visual symbols (|search_replace.config.SearchReplaceDashboardSymbols|)
+        {highlights}  (SearchReplaceDashboardHighlights)  Highlight groups (|search_replace.config.SearchReplaceDashboardHighlights|)
 
 
-                                     *search-replace.config.SearchReplaceConfig*
+                                     *search_replace.config.SearchReplaceConfig*
 SearchReplaceConfig
 
     Fields: ~
-        {keymaps}        (SearchReplaceKeymapConfig)     Keymaps configuration
-        {dashboard}      (SearchReplaceDashboardConfig)  Dashboard configuration
+        {keymaps}        (SearchReplaceKeymapConfig)     Keymap config (|search_replace.config.SearchReplaceKeymapConfig|)
+        {dashboard}      (SearchReplaceDashboardConfig)  Dashboard config (|search_replace.config.SearchReplaceDashboardConfig|)
         {separators}     (string[])                      Available separator characters
         {magic_modes}    (string[])                      Available magic modes
         {flags}          (string[])                      Available flags
@@ -250,36 +222,28 @@ SearchReplaceConfig
         {default_magic}  (string)                        Default magic mode
 
 
-SearchReplace                              *search-replace.config.SearchReplace*
-
-    Fields: ~
-        {setup}                (fun(opts?:SearchReplaceConfig))   Setup the plugin with user configuration
-        {populate_searchline}  (fun(mode:string):string,integer)  Populate the search line
-        {toggle_char}          (fun(char:string):string)          Toggle a flag character
-        {toggle_replace_term}  (fun():string)                     Toggle the replace term
-        {toggle_all_file}      (fun():string)                     Toggle range (all file)
-        {toggle_separator}     (fun():string)                     Toggle separator
-        {toggle_magic}         (fun():string)                     Toggle magic mode
-        {is_active}            (fun():boolean)                    Check if search-replace mode is active
-        {get_config}           (fun():SearchReplaceConfig)        Get the current configuration
-
-
-M.get_config()                                                    *M.get_config*
+M.get_config()                                *search_replace.config.get_config*
     Get the current configuration
 
+    Returns the active configuration table, including any user overrides
+    from setup(). Useful for inspecting or conditionally using config values.
+
     Returns: ~
-        (SearchReplaceConfig)
+        (SearchReplaceConfig)  The current configuration
 
 
-M.setup({opts?})                                                       *M.setup*
-     Setup the plugin with user configuration
+M.setup({opts?})                                   *search_replace.config.setup*
+    Setup the plugin with user configuration
+
+    Initializes the search-replace plugin with optional user configuration.
+    Must be called to enable the plugin functionality.
 
     Parameters: ~
-        {opts?}  (table)  User configuration options
+        {opts?}  (SearchReplaceConfig)  User configuration options (see |search_replace.config|)
 
 
 ==============================================================================
-API                                                         *search-replace.api*
+API                                                             *search_replace*
 
 The plugin exports the following functions via `require('search-replace')`:
 
@@ -304,28 +268,86 @@ Implementation details:
 - All toggle functions use `set_cmd_and_pos()` to update command and cursor
   atomically
 
-M.is_active()                                                      *M.is_active*
+M.is_active()                                         *search_replace.is_active*
+    Check if search-replace mode is active
+
+    Returns true when the user has initiated a search-replace session via the
+    populate keymap (e.g., `<leader>r`). This is useful for conditional logic
+    in custom keymaps or scripts.
+
+    Returns: ~
+        (boolean)  True if search-replace mode is active
 
 
-M.set_cmd_and_pos()                                          *M.set_cmd_and_pos*
+M.populate_searchline({mode})               *search_replace.populate_searchline*
+    Populate the command line with a substitute command
+
+    Builds a substitute command using the word under cursor (normal mode) or
+    visual selection (visual mode). The command uses the configured default
+    range, flags, and magic mode.
+
+    Parameters: ~
+        {mode}  (string)  Mode: 'n' for normal mode, 'v' for visual mode
+
+    Returns: ~
+        (string)   The substitute command string
+        (integer)  Number of characters to move cursor left (to position at end of replace term)
 
 
-M.populate_searchline()                                  *M.populate_searchline*
+M.toggle_char({char})                               *search_replace.toggle_char*
+    Toggle a flag character in the substitute command
+
+    Adds or removes a flag ('g', 'c', or 'i') from the current substitute command.
+    Flags are maintained in a consistent order as defined in configuration.
+
+    Parameters: ~
+        {char}  (string)  The flag character to toggle ('g', 'c', or 'i')
+
+    Returns: ~
+        (string)  Keystroke sequence for expression mapping
 
 
-M.toggle_char()                                                  *M.toggle_char*
+M.toggle_replace_term()                     *search_replace.toggle_replace_term*
+    Toggle the replace term between empty and original word
+
+    Clears the replace term (for delete operations) or restores it to the
+    original word under cursor. Useful for quickly switching between
+    replace and delete operations.
+
+    Returns: ~
+        (string)  Keystroke sequence for expression mapping
 
 
-M.toggle_replace_term()                                  *M.toggle_replace_term*
+M.toggle_all_file()                             *search_replace.toggle_all_file*
+    Cycle through range options for the substitute command
+
+    Cycles through: `%s` (whole file) -> `.,$s` (cursor to end) ->
+    `0,.s` (start to cursor) -> `%s` (whole file)
+
+    Returns: ~
+        (string)  Keystroke sequence for expression mapping
 
 
-M.toggle_all_file()                                          *M.toggle_all_file*
+M.toggle_separator()                           *search_replace.toggle_separator*
+    Cycle through separator characters for the substitute command
+
+    Cycles through configured separators (default: `/`, `?`, `#`, `:`, `@`).
+    Automatically skips separators that appear in the search or replace terms.
+    Useful when dealing with paths or URLs that contain `/`.
+
+    Returns: ~
+        (string)  Keystroke sequence for expression mapping
 
 
-M.toggle_separator()                                        *M.toggle_separator*
+M.toggle_magic()                                   *search_replace.toggle_magic*
+    Cycle through magic modes for pattern matching
 
+    Cycles through: `\v` (very magic) -> `\m` (magic) -> `\M` (nomagic) ->
+    `\V` (very nomagic/literal) -> none -> `\v`
+    See |/magic| for details on each mode.
 
-M.toggle_magic()                                                *M.toggle_magic*
+    Returns: ~
+        (string)  Keystroke sequence for expression mapping
 
 
 vim:tw=78:ts=8:noet:ft=help:norl:
